@@ -1,0 +1,3580 @@
+
+// ------------------------------------------------------------基础能力类-------------------------------------------------------------------
+Import "Thread.lua"
+Import "DateTime.lua"
+// 检查是否正在等待
+Function checkLoading
+  //如果非loading状态,则跳出循环
+    Do 
+        If CmpColorEx("63|67|000000,497|75|000000,293|151|000000,292|230|000000,299|407|000000,227|1153|000000",0.9) = 1 Then
+            //ShowMessage ("正在等待跳转")
+            Delay 1500
+        Else 
+            Delay 500
+            //ShowMessage ("成功跳转")
+            Exit Do
+        End If
+    Loop
+End Function
+
+// 退出到选择角色界面
+Function backSelectManPage(type)
+//   通过一步一步返回再到选择角色界面
+    If type = "normal" Then 
+        Do
+	 // 判断是否已经弹出退出确认弹窗
+            If CmpColorEx("180|396|B0874C-202020,178|564|B0874C-202020,165|629|B0874C-202020,118|957|3B332D-202020,608|1233|FFFFFF-202020", 0.8) = 1 Then 
+       
+                Tap 201, 589
+                Delay 1000
+                checkLoading 
+                Exit Function
+            Else 
+                KeyPress ("Back")
+                Delay 1000
+            End If
+        Loop
+    // 通过右上角菜单切换角色(快速版本)
+    ElseIf type = "quick" Then
+        Tap 709, 1234
+        Do
+    	//判断是否打开了更多菜单
+            If CmpColorEx("409|821|692B48,316|1170|1E3275,341|929|793E20,427|934|3C4816", 0.9) = 1 Then 
+                Tap 63,1176
+            End If
+            // 判断是否弹出选择角色弹窗
+            If CmpColorEx("660|264|665041,690|652|665041,691|1046|665041,592|917|957A61,75|453|B0874C,79|566|B0874C,81|839|C3C3C3", 0.9) = 1 Then 
+                Tap 80, 280
+                Delay 1000
+                checkLoading
+                Exit Function
+            End If
+        Loop
+    End If
+    
+End Function
+
+
+
+
+// 检测当前第几页角色
+Function checkPageIndex()
+	// 先检测是第几页
+    Do
+        If CmpColorEx("61|419|527BFF",0.9) = 1 Then
+            checkPageIndex = 1
+            Exit Do
+        End If
+        If CmpColorEx("61|448|527BFF",0.9) = 1 Then
+            checkPageIndex = 2
+            Exit Do
+        End If
+        If CmpColorEx("61|480|527BFF",0.9) = 1 Then
+            checkPageIndex = 3
+            Exit Do
+        End If
+        If CmpColorEx("61|508|527BFF",0.9) = 1 Then
+            checkPageIndex = 4
+            Exit Do
+        End If
+        If CmpColorEx("61|540|527BFF",0.9) = 1 Then
+            checkPageIndex = 5
+            Exit Do
+        End If
+    Loop
+    
+End Function
+
+// 检测当前第个角色
+Function checkManIndex()
+// 第一行第一个角色的位置信息
+    Dim oneRowFirstInfoArray = Array(383,207)
+    Dim oneRowX,oneRowY,manIndex,rowInfoArray
+    manIndex = 0
+    FindColor 379, 171, 387, 764, "FFFFFF", 0, 0.9, oneRowX, oneRowY
+    If oneRowX > -1 And oneRowY > -1 Then
+        If oneRowY <= 210 Then 
+            manIndex = 1
+            rowInfoArray = Array(manIndex,oneRowX,oneRowY)
+        ElseIf oneRowY <= 390 Then
+            manIndex = 2
+            rowInfoArray = Array(manIndex,oneRowX,oneRowY)
+        ElseIf oneRowY <= 590 Then
+            manIndex = 3
+            rowInfoArray = Array(manIndex,oneRowX,oneRowY)
+        End If        
+    End If
+    //第一行没找到活跃角色,开始寻找第二行
+    If manIndex = 0 Then 
+        Dim twoRowX,twoRowY
+        //FindColor 87, 66, 100, 860, "15CDFF", 0, 1.0, twoRowX, twoRowY
+        FindColor 89,63,93,858, "FFFFFF", 0, 0.9, twoRowX, twoRowY
+        If twoRowX > -1 And twoRowY > -1 Then
+            If twoRowY <=85 Then 
+                manIndex = 4
+                rowInfoArray = Array(manIndex,twoRowX,twoRowY)
+            ElseIf twoRowY <= 280 Then
+                manIndex = 5
+                rowInfoArray = Array(manIndex,twoRowX,twoRowY)
+            ElseIf twoRowY <= 480 Then
+                manIndex = 6
+                rowInfoArray = Array(manIndex,twoRowX,twoRowY)
+            ElseIf twoRowY >=600 Then
+                manIndex = 7
+                rowInfoArray = Array(manIndex,twoRowX,twoRowY)
+            End If
+        End If
+    End If
+    Dim pageCount = (checkPageIndex()-1) * 7
+    Dim resManIndex = manIndex + pageCount
+    If IsArray(rowInfoArray) = True Then 
+        rowInfoArray(0) = resManIndex
+        checkManIndex = rowInfoArray
+    Else 
+        Tap oneRowFirstInfoArray(0), oneRowFirstInfoArray(1)
+        rowInfoArray = Array(resManIndex+1,0,0)
+        checkManIndex = rowInfoArray
+    End If 
+   
+  
+ 
+  
+End Function
+
+
+// 切下一个角色
+Function nextMan()
+	// 第一行第一个角色的位置信息
+    Dim oneRowFirstInfoArray = Array(383,207)
+    // 第二行第一个角色的位置信息
+    Dim twoRowFirstInfoArray = Array(93,158)
+    Dim manInfoArray =  checkManIndex()
+    // 不等于一页的最后一个时候
+    If manInfoArray(0) Mod 7 <> 0 Then 
+        //如果等于第三个时候,切换第二行第一个
+        If manInfoArray(0) = 3 + 7 * (checkPageIndex() - 1) Then 
+            Delay 500
+            Tap(twoRowFirstInfoArray(0),twoRowFirstInfoArray(1))
+        Else 
+         //否则按照一定的位移点击下一个
+            Tap manInfoArray(1), manInfoArray(2) + 220
+          
+        End If
+    Else 
+   //如果为一页的最后一个,则切换下一页并单击下一页的第一个角色
+        Tap 361, 857
+        Delay 1500
+        Tap( oneRowFirstInfoArray(0),oneRowFirstInfoArray(1))
+    End If
+    Delay 1500
+    // 如果仍为刚才的角色,则证明已经到最后一个角色了
+    Dim currentInfo = checkManIndex()
+    If manInfoArray(0) = currentInfo(0) Then 
+        nextMan = "isLast"
+        ShowMessage("已是最后一个角色")
+    End If
+End Function
+
+// 新版下一个角色(在角色游戏界面快速切换下一角色)
+Function newNextMan()
+    toMoreMenu 
+    Do
+    	//判断是否打开了更多菜单
+        If CmpColorEx("409|821|692B48,316|1170|1E3275,341|929|793E20,427|934|3C4816", 0.9) = 1 Then 
+            Tap 63, 1176
+            Delay 2000
+        End If
+            // 判断是否弹出选择角色弹窗
+        If CmpColorEx("660|264|665041,690|652|665041,691|1046|665041,592|917|957A61,75|453|B0874C,79|566|B0874C,81|839|C3C3C3", 0.9) = 1 Then 
+            Exit Do
+        End If
+    Loop
+    Do
+        Dim intX,intY
+        FindPic 114, 218, 554, 1064, "Attachment:当前在线角色.png", "000000", 0, 0.7, intX, intY
+
+        If intX > -1 And intY > -1 Then 
+            Dim GetColor
+        	// 当前活跃是左边栏的角色
+            If intY < 640 Then 
+            	// 点击右边的角色
+                Tap intX - 50, intY + 300
+                Delay 1000
+                GetColor = GetPixelColor(intX - 50, intY + 300)
+                If GetColor = "41D7FF" Then 
+                    Tap 89, 897
+                    Delay 1000
+                    Do
+                    // 如果还在训练场角色,则点击结束训练场
+                        If CmpColorEx("585|353|373534,577|934|665041,160|373|B0874C,168|910|4670EE", 0.9) = 1 Then 
+                            Tap 200, 749
+                            Delay 1500
+                            Tap 89, 897
+                            Delay 1500
+                            checkLoading 
+                            newNextMan = False
+                            Exit Function
+                        Else 
+                            Delay 1500
+                            checkLoading 
+                            newNextMan = False
+                            Exit Function
+                        End If
+                       
+                    Loop
+                Else 
+                    newNextMan = True
+                    ShowMessage ("已到最后一只角色")
+                    Exit Function
+                End If
+            Else 
+            // 当前活跃是右边栏角色
+                Tap intX - 100, intY - 500
+                Delay 1000
+                GetColor = GetPixelColor(intX - 100, intY - 500)
+                If GetColor = "41D7FF" Then 
+                    Tap 89, 897
+                    Delay 1000
+                    Do
+                    // 如果还在训练场角色,则点击结束训练场
+                        If CmpColorEx("585|353|373534,577|934|665041,160|373|B0874C,168|910|4670EE",0.9) = 1 Then
+                            Tap 200, 749
+                            Delay 1500
+                            Tap 89, 897
+                            Delay 1500
+                            checkLoading 
+                            newNextMan = False
+                            Exit Function
+                        Else 
+                            Delay 1500
+                            checkLoading 
+                            newNextMan = False
+                            Exit Function
+                        End If
+                    Loop
+                Else 
+                    newNextMan = True
+                    ShowMessage ("已到最后一只角色")
+                    Exit Function
+                End If
+            End If
+        End If
+        Delay 1000  
+    Loop
+End Function
+// 切换到第一个角色
+Function selectOneMan()
+    Do
+	// 在角色选择页面
+        If CmpColorEx("678|41|547EFF-808080,312|949|C9E7F6,309|1199|C9E7F6,360|858|507BFF,361|54|507BFF", 0.9) = 1 Then 
+			// 判断是否在第一页
+            If CmpColorEx("59|419|527BFF", 0.9) = 1 Then 
+                Delay 500
+                // 点击第一个角色
+                Tap 456, 270
+                Delay 500
+                Dim currentInfo = checkManIndex()
+                If currentInfo(0) = 1 Then 
+                    ShowMessage ("已切换到第一个角色")
+                    Delay 500
+                     //点击游戏开始
+                    Tap 74, 983
+                    Delay 300
+       				 // 如果弹出提示训练场弹窗
+                    If CmpColorEx("571|344|665041,573|940|665041,168|368|B0874C,181|911|4670EE,145|679|F2F2F2", 0.9) = 1 Then 
+                        Tap 197, 746
+                        Delay 1000
+         				//点击游戏开始
+                        Tap 74, 983
+                    End If
+                    Delay 1500
+                    checkLoading 
+                    Exit Do
+                End If
+            Else 
+                Tap 360, 857
+                Delay 500
+            End If
+        End If
+    Loop
+End Function
+// 在选择角色界面选择指定角色
+Function inSelectPageSelectTo(targetNumber)
+    Do
+		// 在角色选择页面
+        If CmpColorEx("678|41|547EFF-808080,312|949|C9E7F6,309|1199|C9E7F6,360|858|507BFF,361|54|507BFF", 0.9) = 1 Then 
+			// 判断是否在第一页
+            If CmpColorEx("59|419|527BFF", 0.9) = 1 Then 
+                Delay 500
+                // 点击第一个角色
+                Tap 456, 270
+                Delay 500
+                Do
+                    Dim current = checkManIndex()
+                    TracePrint targetNumber,current(0)
+                	// 如果不是同一个角色,则往下选择
+                    If Int(targetNumber) <> current(0) Then 
+                        nextMan 
+                    Else 
+                        Exit Function
+                    End If
+                Loop
+            Else 
+                Tap 360, 857
+                Delay 500
+            End If
+        End If
+    Loop
+End Function
+
+// 返回到游戏的首页(检测角色血条颜色)
+Function backToGameIndex
+    //Delay 1500
+    Do	
+        If CmpColorEx("678|122|00F33E,678|128|00F443,678|133|00F447,675|130|412F29,649|124|FFFFFF,613|125|FFFFFF", 0.9) = 1 Then 
+            //TracePrint "已经抵达血条页"
+            Exit Do
+        Else 
+            //TracePrint "还没抵达血条页,再次点击返回按键"
+        // 找不到角色血条就一直返回
+            KeyPress ("back")
+            //Delay 1000
+        End If
+        Delay 500
+    Loop
+End Function
+
+//打开更多菜单
+Function toMoreMenu
+    backToGameIndex 
+    Delay 800
+    Do
+        Tap 709, 1234
+        Delay 1000
+        //判断是否打开了更多菜单
+        If CmpColorEx("409|821|692B48,316|1170|1E3275,341|929|793E20,427|934|3C4816", 0.9) = 1 Then 
+            //TracePrint "已经打开了更多菜单"
+            Exit Do
+        End If
+        Delay 1000
+    Loop
+End Function
+
+//打开成长
+Function openDailyTasks()
+    toMoreMenu 
+    Do
+    	// 如果已经进入成长,则完成
+        If CmpColorEx("583|29|4675EE,571|177|4675EE,706|103|665041,676|122|FFFFFF,680|1245|FFFFFF,78|730|F2F2F2",0.9) = 1 Then
+            Exit Do
+        Else
+	        // 点击成长图标
+            Tap 615, 1068
+            Exit Do
+        End If
+    Loop
+End Function
+
+// 打开日常玩法
+Function openDayPlay()
+    Do
+        toMoreMenu 
+        Delay 300
+        Tap 432, 1130
+        Delay 500
+        Dim timeS = 0
+        Do
+          // 如果5秒还没找到日常则重新循环
+            If timeS >= 5 Then 
+                Exit Do
+            End If
+	   	// 检测是否已经打开日常玩法
+            If CmpColorEx("586|1140|4670EE,585|941|957A61,669|1105|665041,678|1243|FFFFFF,594|68|5F5144,603|356|F2F2F2", 0.9) = 1 Then 
+                Exit Function
+            End If
+            timeS = timeS +1
+            Delay 1000
+        Loop
+    Loop
+End Function
+
+//领取所有奖励(周日常+日日常)
+Function getAllReward()
+    openDailyTasks 
+    Tap 584, 43
+    Delay 2000
+    Dim dayFinish,weekFinish
+    // 领取日日常
+    Do Until dayFinish
+        Dim currentTime = 0
+    	// 如果可以领取
+        If CmpColorEx("614|193|1031FC",0.9) = 1 Then 
+            Tap 58, 1191
+            Do
+                // 如果定格在领取循环里超过4s,则结束领取日日常
+                If currentTime > 4000 Then 
+                    dayFinish = True
+                    Delay 1000
+                    Exit Do
+                End If
+           	
+                Dim intX,intY
+                FindPic 35, 265, 327, 975,"Attachment:confrimbtn.png","000000",0,0.8,intX,intY
+                If intX > -1 And intY > -1 Then 
+                    Tap intX, intY
+                    Delay 1500
+                    Exit Do
+                End If   
+               //不够空间
+                If CmpColorEx("527|483|3FE7FF,527|683|3DD9EE",0.9) = 1 Then
+                    dayFinish = True
+                    Delay 1000
+                    Exit Do
+                End If
+                currentTime = currentTime + 1000
+                Delay 1000
+            Loop
+        Else 
+            Exit Do
+        End If
+    Loop
+    // 领取周日常
+    Delay 500
+    Do
+    	// 如果没选中周常领取tap 则点击领取
+        If CmpColorEx("535|8|4675EE-505050,471|12|4675EE-505050", 0.9) <> 1 Then 
+            Tap 502, 100
+        Else 
+            Exit Do
+        End If
+        Delay 800
+    Loop
+    Delay 1500
+    Do Until weekFinish
+        Dim currentTime1 = 0
+    	// 如果可以领取
+        If CmpColorEx("79|1144|4670EE,79|1230|4670EE,36|1135|4670EE,33|1231|4670EE,101|1168|F2F2F2", 0.9) = 1 Then 
+            Tap 58, 1191
+            Delay 1000
+            Do
+            	  // 如果定格在领取循环里超过4s,则结束领取日日常
+                If currentTime1 > 4000 Then 
+                    weekFinish = True
+                    Delay 1000
+                    Exit Do
+                End If
+           	
+                Dim intX1,intY1
+                FindPic 35, 265, 327, 975,"Attachment:confrimbtn.png","000000",0,0.8,intX1,intY1
+                If intX1 > -1 And intY1 > -1 Then 
+                    Tap intX1, intY1
+                    Delay 1500
+                    Exit Do
+                End If   
+                   // 不够空间
+                //不够空间
+                If CmpColorEx("527|483|3FE7FF,527|683|3DD9EE",0.9) = 1 Then
+                    weekFinish = True
+                    Delay 1000
+                    Exit Do
+                End If
+                currentTime1 = currentTime1 + 1000
+                Delay 1000
+            Loop
+        Else 
+            Exit Do
+        End If
+    Loop
+    
+    
+End Function
+
+
+// 领取个人邮件
+Function getEmail()
+    toMoreMenu 
+    Tap 686, 1059
+    Delay 1000
+    Do
+   //进入提示有准备过期邮件弹窗
+        If CmpColorEx("578|198|2D4B98,39|119|2D4B98,571|359|665041,574|917|665041,176|558|4670EE,182|745|4670EE", 0.9) = 1 Then 
+            Tap 206, 631
+            Delay 1000
+        End If
+   // 进入到邮箱界面(停留在通用)
+        If CmpColorEx("699|281|665041,698|805|665041,680|1244|FFFFFF,589|188|4675EE,585|320|4675EE,60|29|4675EE", 0.9) = 1 Then 
+            Tap 588, 423
+        End If
+   	// 进入到邮箱界面(停留在个人)
+        If CmpColorEx("648|71|665041,659|413|665041,655|910|665041,656|1086|665041,681|1243|FFFFFF,38|39|4675EE,37|134|4675EE,573|239|46362B,604|388|4675EE", 0.9) = 1 Then 
+   		// 可领取邮件
+            If CmpColorEx("67|584|4670EE,72|675|4670EE,23|585|4670EE,23|661|4670EE", 0.9) = 1 Then 
+                Tap 56, 610
+            Else 
+   			// 没有可领取邮件
+                Exit Function
+            End If
+        End If
+   	// 个人邮件领取成功道具显示
+        If CmpColorEx("603|379|152246,601|514|152246,570|351|665041,560|920|665041,188|571|4670EE,188|730|4670EE", 0.9) = 1 Then 
+            Tap 193, 604
+            Delay 1000
+            Exit Function
+        End If
+    Loop
+End Function
+
+// 寻找确定按钮
+Function findConfrimBtn()
+    Dim resX,resY
+    FindPic 2,6,416,1279,"Attachment:confrimbtn.png","000000",0,0.8,resX,resY
+    If resX > -1 And resY > -1 Then 
+        findConfrimBtn  =Array(resX,resY)
+    Else 
+        findConfrimBtn = Null
+    End If
+End Function
+
+
+//检查药瓶
+Function checkMedicine()
+    backToGameIndex 
+    Dim resArray,hongCount,lanCount
+    Delay 1000
+    Do
+    	//先找是否有道具按钮
+        If CmpColorEx("379|1207|FFFFFF,379|1219|FFFFFF,380|1233|FFFFFF,380|1248|FFFFFF,366|1235|FFFFFF,351|1207|FFFFFF,351|1249|FFFFFF,350|1234|FFFFFF",0.9) = 1 Then
+            Tap 363,1229
+            Delay 1000
+        Else 
+        // 如果没找到判断是否存在被打开的道具更多按钮
+            Dim intX1,intY1
+            FindPic 330,954,404,1270,"Attachment:道具更多按钮被点击.png","303030",0,0.9,intX1,intY1
+            If intX1 > -1 And intY1 > -1 Then
+                hongCount = SmartOcr(492, 1125, 509, 1181, "FFFFFF-808080")
+                // 没有蓝条的角色
+                If CmpColorEx("538|1212|DCDAD9,519|1231|DAD7D5,521|1238|DAD7D6,542|1244|DAD8D7",0.9) = 1 Then
+                    lanCount = 0
+                Else 
+                    lanCount =SmartOcr(490,1195,509,1261,"FFFFFF-808080")
+                End If
+                resArray  = Array(hongCount,lanCount)
+                Exit Do
+            Else 
+                // 若上述2都不存在,则可以滑动找道具更多按钮
+                //TouchDown(363,1233)
+                //TouchMove 359, 1069, 0, 500
+                //TouchUp (0)
+                Swipe 363,1233,359,1069,500
+                Delay 1000	
+            End If
+        End If
+    Loop
+    //TracePrint resArray(0),resArray(1)
+    checkMedicine = resArray
+End Function
+// 判断是否进入自动战斗状态
+Function isAutoFight()
+    If CmpColorEx("65|411|FFFFFF,70|415|FFFFFF,60|415|FFFFFF,66|435|FFFFFF,61|433|FFFFFF,59|431|FFFFFF,69|429|FFFFFF",0.7) = 1 Then
+        isAutoFight = True
+    Else
+        isAutoFight = False
+    End If
+End Function
+
+
+// 批量处理道具
+Function piLiangBackpack()
+    toMoreMenu 
+    Tap 685, 1120
+    Delay 1000
+    Do
+    // 对比看是否已经入背包
+        If CmpColorEx("669|274|665041,677|380|665041,588|208|4675EE,680|1245|FFFFFF", 0.9) = 1 Then 
+            Delay 500
+        	// 寻找整理按钮
+            Dim piliangX,piliangY
+            FindPic 19, 742, 74, 1264, "Attachment:批量.png", "000000", 0, 0.9, piliangX, piliangY
+            If piliangX > -1 And piliangY > -1 Then 
+                Tap piliangX, piliangY
+                Delay 500
+                Do
+                // 是否进入批量界面
+                    Dim piliangDialogX,piliangDialogY
+                    FindPic 561, 0, 719, 223, "Attachment:批量界面.png", "000000", 0, 0.9, piliangDialogX, piliangDialogY
+                    If piliangDialogX > -1 And piliangDialogY > -1 Then
+	                     // 判断随机宝箱是否勾选
+                        If CmpColorEx("33|231|CAC6C3", 0.9) = 1 Then 
+                            Tap 39, 228
+                            Delay 500
+                        End If
+	                    // 判断普通宝箱是否勾选
+                        If CmpColorEx("36|384|CAC6C3", 0.9) = 1 Then 
+                            Tap 45, 389
+                            Delay 500
+                        End If
+                        // 点击开启
+                        Delay 1000
+                        If CmpColorEx("600|149|FFFFFF,598|471|FFFFFF", 1) = 1 Then 
+                            Tap 46, 1116
+                            Delay 1000
+                            Tap 46, 1116
+                             // 开启物品二次确认弹窗
+                            Do
+                                Dim piliangDialogX1,piliangDialogY1
+                                FindPic 351,231,684,1033,"Attachment:批量二次确认.png","000000",0,0.9,piliangDialogX1,piliangDialogY1
+                                If piliangDialogX1 > -1 And piliangDialogY1 > -1 Then 
+                                    If CmpColorEx("175|717|4670EE", 0.9) = 1 Then 
+                                     	// 点击开启
+                                        Tap 196, 757
+                                        //点击开启后 延迟检测
+                                        Delay 3000
+                                        For 3
+                                        	
+                                        	//点击开启后 延迟检测,循环三次看下是否弹出确认弹窗,如果3次均不存在则结束循环
+                                            Delay 3000
+                                            If CmpColorEx("643|35|1E1813,649|315|1E1813,652|428|665041,665|862|665041,646|1007|1E1813",0.9) = 1 Then
+                                                Dim refrimBtnConfig1 = findConfrimBtn()
+                                                Tap refrimBtnConfig1(0), refrimBtnConfig1(1)
+                                            End If
+                                        Next
+                                    End If
+                                    Exit Function
+                                End If	
+                            Loop
+                        End If
+                        Exit Function
+                    End If
+                   
+                Loop
+            End If
+         
+        End If
+      	 //如果有口袋过期
+        If CmpColorEx("575|341|665041,571|930|665041", 0.9) = 1 Then 
+            Tap 188,778
+        End If
+    Loop
+End Function
+
+// 分解装备
+Function fenJieBackpack()
+    toMoreMenu 
+    Tap 685, 1120
+    Delay 1000
+    Do
+    // 对比看是否已经入背包
+        If CmpColorEx("669|274|665041,677|380|665041,588|208|4675EE,680|1245|FFFFFF", 0.9) = 1 Then 
+            Delay 500
+        	// 寻找分解按钮
+            Dim fenjieX,fenjieY
+            FindPic 10,735,79,1272,"Attachment:分解.png","000000",0,0.9,fenjieX,fenjieY
+            If fenjieX > -1 And fenjieY > -1 Then 
+                Tap fenjieX, fenjieY
+                Delay 500
+                Do
+                // 是否进入分解装备选择界面
+                    Dim fenjieDialogX,fenjieDialogY
+                    FindPic 495,1,719,286,"Attachment:分解装备界面.png","000000",0,0.9,fenjieDialogX,fenjieDialogY
+                    If fenjieDialogX > -1 And fenjieDialogY > -1 Then
+                        Do 	
+            		// 判断分解列表是否不为空
+                            If CmpColorEx("598|54|E9E9E9", 1) <> 1 Then 
+                                Tap 48,1116
+                                Delay 1000
+                                Do
+                        	 //是否进入确认弹窗
+                                    If CmpColorEx("643|35|1E1813,649|315|1E1813,652|428|665041,665|862|665041,646|1007|1E1813",0.9) = 1 Then
+                                        Dim refrimBtnConfig = findConfrimBtn()
+                                        If refrimBtnConfig <> Null Then 
+                                            Tap refrimBtnConfig(0), refrimBtnConfig(1)
+                                            Delay 1000
+                                        Else 
+                                            Exit Function
+                                        End If
+                                     
+                                    Else 
+                                        Exit Function
+                                    End If
+                                Loop
+                            End If
+                            Exit Function
+                        Loop
+                    End If
+                Loop
+            End If
+         
+        End If
+        //如果有口袋过期
+        If CmpColorEx("575|341|665041,571|930|665041", 0.9) = 1 Then 
+            Tap 188,778
+        End If
+    Loop
+End Function
+// 整理道具
+Function organizeBackPack()
+    toMoreMenu 
+    Tap 685, 1120
+    Delay 1000
+    Do
+    // 对比看是否已经入背包
+        If CmpColorEx("669|274|665041,677|380|665041,588|208|4675EE,680|1245|FFFFFF", 0.9) = 1 Then 
+            Dim intX,inxY
+            FindPic 11,730,76,1270,"Attachment:整理道具.png","000000",0,0.9,intX,inxY
+            If intX > -1 And inxY > -1 Then
+                Tap intX, inxY
+                Delay 1000
+                Exit Function
+            End If
+        End If
+          //如果有口袋过期
+        If CmpColorEx("575|341|665041,571|930|665041", 0.9) = 1 Then 
+            Tap 188,778
+        End If
+    Loop
+End Function 
+
+// 记录角色状态到文本(防止脚本崩后)
+Function setRecordManActivce(manIndex, type)
+    Dim manInfoArray = Array(manIndex,type, DateTime.Day())
+    Call File.WriteLines("/sdcard/ymplus.txt", manInfoArray)
+End Function
+
+// 读取角色状态及进度
+Function getRecordManActivce()
+    Dim res = File.ReadLines("/sdcard/ymplus.txt")
+    getRecordManActivce = res
+End Function
+
+// 检测队伍是否正常
+Function checkInStarTeam(type)
+    backToGameIndex 
+    Delay 1000
+    Rem restartRem
+     // 是否打开队伍图标
+    If CmpColorEx("472|31|16D0A3", 0.9) = 1 Then 
+        If type = "normal" Then 
+     		//普通模式只检测判断第一和第二个位置是否有血条
+            If CmpColorEx("508|112|02D852,508|117|02D852,478|112|02D852,478|116|02D852", 0.9) = 1 Then 
+                checkInStarTeam = True
+            Else 
+                checkInStarTeam = False
+            End If
+         // 判断队伍最少有4个人
+        ElseIf type = "5" Then
+            If CmpColorEx("508|112|02D852,477|115|02D852,448|117|02D852,417|117|02D852,388|120|02D852", 0.9) = 1 Then 
+                checkInStarTeam = True
+            Else 
+                checkInStarTeam = False
+            End If
+        End If
+    	
+    Else 
+	// 如果没打开的话则打开
+        Tap 461, 27
+        Delay 1000
+        Goto restartRem
+    End If
+	
+End Function
+
+// 检测当前角色等级
+Function getCurrentManLevel
+    backToGameIndex 
+    Delay 500
+    // 点击头像
+    Tap 688, 20
+    Delay 500
+    Do
+    // 如果进入了角色预览界面
+        If CmpColorEx("706|21|665041,527|24|00A0EA,438|15|F2F2F2",0.9) = 1 Then
+            Dim intX,intY
+            FindPic 541, 5, 571, 91, "Attachment:级.png", "808080", 0, 0.9, intX, intY
+            Dim level = SmartOcr(546,19,565,intY,"D0F8E4-505050|DDF5CB-505050|D7F7D7-505050|F4F09F-505050|F4F09F-505050")
+            ShowMessage "当前等级"&level, 2000, 20, 600
+            getCurrentManLevel = level
+            Exit Function
+        Else 
+    	  // 点击头像
+            Tap 688, 20
+            Delay 500
+        End If
+    	
+    Loop
+   
+   
+End Function
+//-------------------------------------------------------脚本工具类--------------------------------------------------------------------
+//获取注册码
+Function getCode()
+    Dim id = "460002013356423"
+    UI.NewLayout ("编码获取")
+    UI.AddEditText("编码获取","设备编码",Encode.Md5("andy"&id&"202077"),400)
+    UI.AddTextView("编码获取","描述","点击继续将复制")
+    UI.Show ("编码获取")
+    Sys.SetClipText Encode.Md5("andy"&id&"202077")
+End Function
+// 校验注册码
+Function checkUser()
+    Dim code = Encode.Md5("andy"&Device.GetImsi()&"202077")
+    Dim codeInputText =  ReadUIConfig("激活码")
+    If code <> codeInputText And codeInputText <> "alovez202077"  Then 
+        checkUser = False
+    Else 
+        checkUser = True
+    End If
+End Function
+
+// 喵提醒
+Function noticeMiao(keyCode, text)
+    Dim apiUrl = "http://miaotixing.com/trigger?id="
+    Dim resUrl = apiUrl&keyCode&"&text="&text
+    Url.Get(resUrl)
+End Function
+
+// ------------------------------------------------------------功能类-------------------------------------------------------------------------
+
+// 去仓库取金币
+Function getMoney()
+    toMoreMenu 
+    Do
+        Dim intX,intY,intX1,intY1
+        FindPic 0, 0, 0, 0, "Attachment:非会员仓库.png", "000000", 0, 0.8, intX, intY
+        FindPic 0, 0, 0, 0, "Attachment:会员仓库.png", "000000", 0, 0.8, intX1, intY1
+        // 非会员仓库
+        If intX > -1 And intY > -1 Then
+            Exit Function
+        ElseIf intX1 > -1 And intY1 > -1 Then
+        	// 会员仓库
+            Tap intX1, intY1
+            Exit Do
+        Else 
+             //滑动
+            //TouchDown(125,1077)
+            //TouchMove 655,996, 0, 500
+            //TouchUp (0)
+            Swipe 125,1077,655,996,500
+            Delay 2000
+        End If
+    Loop
+    Delay 1000
+    Do
+	// 进入到仓库界面
+        If CmpColorEx("534|457|4670EE,505|460|F2F2F2,474|457|4670EE,538|573|B0874C,504|577|F2F2F2,473|581|B0874C", 0.9) = 1 Then 
+		// 点击取出金额
+            Tap 541,609
+        End If
+		// 到输入金额的界面
+        If CmpColorEx("245|852|573CBC,257|959|00A0EA,217|544|4670EE,211|454|B0874C", 0.9) = 1 Then 
+		 //输入1
+            Tap 494, 766
+            Delay 200
+		 // 输入5
+            Tap 395, 860
+            Delay 200
+            For 5
+		 	// 输入5次0
+                Tap 239, 772
+                Delay 200
+            Next
+            Delay 500
+		 // 点击确定取出
+            Tap 221, 551
+            Exit Function
+        End If
+	
+    Loop
+End Function
+// 购买经验药水并存仓库
+Function jingyan(timeout)
+    backToGameIndex
+    Do
+        Dim time = Thread.GetShareVar("jingYanTimeout")
+        If time = timeout Then 
+            backToGameIndex
+            Exit Do
+        End If
+     	// 是否在用户首页
+        If CmpColorEx("608|122|4C3E2F-404040,620|122|4C3E2F-404040,644|121|4C3D2F,644|129|FFFFFF-202020",0.9) = 1 Then
+            Tap 678,1238
+            Delay 1000
+        End If
+        //判断是否已经打开右上角菜单按钮
+        If CmpColorEx("614|860|FFFFFF,615|976|FFFFFF,433|974|FFFFFF,429|1147|FFFFFF,249|863|FFFFFF",0.9) = 1 Then
+            Tap 685, 888
+            Delay 500
+        End If
+         //判断是否已经进入商城
+        If CmpColorEx("677|108|FFFFFF,672|148|665041,694|269|2B5EE2,660|308|00214F",0.9) = 1 Then
+            Dim tagX,tagY
+            // 点击游戏道具
+            FindStr(123,1,565,152,"游戏道具","C5C5C5-808080",0.7,tagX,tagY)
+            Tap tagX, tagY
+            Delay 500
+        End If
+        // 判断是否存点击到游戏道具界面
+        Dim tagX1,tagY1
+        FindStr 566, 191, 624, 1195, "增益", "7B7169-404040|7C7269-404040|7D746B-404040|7A7067-404040", 0.7, tagX1, tagY1
+        If tagX1 > -1 And tagY1 > -1 Then 
+        	// 点击增益
+            Tap tagX1, tagY1
+            Delay 500
+        End If
+        // 判断是否进入增益道具界面
+        Dim tagX2,tagY2
+        FindStr(355,177,562,371,"花","8C837C-404040|756B62-404040|5F5349-404040|5F5348-404040",0.7,tagX2,tagY2)
+        If tagX2 > -1 And tagY2 > -1 Then 
+        	// 如果不是优惠商品,则不够买
+            If CmpColorEx("540|200|E132B6,540|231|E132B6", 0.9) = 1 Then 
+            	// 点击棉花糖
+                Tap tagX2, tagY2
+                Delay 500
+            Else 
+                Exit Do
+            End If
+        
+        End If
+        // 判断是否弹出棉花糖购买弹窗
+        If CmpColorEx("651|701|FFFFFF,661|719|CC99FF,58|1041|4670EE", 0.9) = 1 Then 
+           // 点击购买
+            Tap 65, 1073
+            Delay 500
+        End If
+        // 检测到背包仍有提示弹窗
+        If CmpColorEx("649|496|665041,431|431|706F6E,79|742|4670EE,51|769|4670EE,48|516|4670EE",0.9) = 1 Then
+            Tap 84, 585
+            Delay 500
+        End If
+        // 判断是否弹出购买棉花糖道具弹窗
+        If CmpColorEx("514|81|FFFFFF,466|929|41D7FF,80|880|4670EE",0.9) = 1 Then
+            Tap 82, 864
+            Delay 500
+        End If
+        // 判断是否弹出确认购买弹窗
+        If CmpColorEx("201|430|B0874C,215|501|B0874C,210|571|B0874C,206|734|4670EE,206|865|4670EE,327|502|C8662E,268|500|030099",0.9) = 1 Then
+            Tap 201, 737
+            Delay 1000
+            Tap 193, 562
+            Delay 1000
+            KeyPress ("Back")
+            Delay 1000
+            // 判断是否返回到更多菜单
+            If CmpColorEx("614|860|FFFFFF,615|976|FFFFFF,433|974|FFFFFF,429|1147|FFFFFF,249|863|FFFFFF",0.9) = 1 Then
+                Do
+                    If findCount = 3 Then 
+                        Exit Do
+                    End If
+                    Dim cangkuX,cangkuY
+                    Dim findCount  = 0
+                    FindPic 74,795,667,1267,"Attachment:仓库.png","505050",0,0.9,cangkuX,cangkuY
+                    If cangkuX > -1 And cangkuY > -1 Then
+                        Tap cangkuX, cangkuY
+                        Delay 1500
+                        If CmpColorEx("478|69|0469FF,537|446|4670EE,45|562|4670EE,159|709|F2F2F2", 0.9) = 1 Then 
+                            Exit Do
+                        End If
+                    Else 
+                        findCount=findCount+1
+                       //滑动
+                        //TouchDown(125,1077)
+                        //TouchMove 655,996, 0, 500
+                        //TouchUp (0)
+                        Swipe 125,1077,655,996,500
+                        Delay 2000
+                    End If
+                Loop
+              
+            End If
+        End If
+
+    
+         // 判断是否进入会员仓库
+        If CmpColorEx("478|69|0469FF,537|446|4670EE,45|562|4670EE,159|709|F2F2F2", 0.9) = 1 Then 
+            Do
+				//找棉花糖图标
+                Dim intX1,intY1
+                FindPic 81,723,559,1273,"Attachment:棉花糖.png","000000",0,0.5,intX1,intY1
+                If intX1 > -1 And intY1 > -1 Then
+                    Tap intX1, intY1
+                    Delay 500
+                    // 背包没有棉花糖
+                Else 
+                    Exit Function
+                End If
+            // 判断是否进入保管界面
+                If CmpColorEx("60|879|4670EE,54|1048|4670EE,630|730|BB66FF",0.7) = 1 Then
+                    Tap 63, 864
+                    Delay 500
+                End If
+                // 判断是否进入选择保管数量弹窗
+                If CmpColorEx("222|448|B0874C,233|532|4670EE,249|978|00A0EA,249|878|573CBC,386|887|957A61", 0.7) = 1 Then 
+                // 选择最大
+                    Tap 252, 963
+                    Delay 500
+					// 确认保管
+                    Tap 220, 663
+                    Delay 500
+                End If
+            Loop
+        End If
+    Loop
+End Function
+
+//抢材料
+Function qiangCJ()
+    TracePrint UseDict(1)
+    Dim number= ReadUIConfig("抢材料金额")
+    Dim allBuyFlag = ReadUIConfig("抢最大数量")
+    Dim checkMinCountFlag = ReadUIConfig("启用抢材料数量判断")
+    Dim minCount = ReadUIConfig("抢材料最少数量")
+    Do
+        Rem restart
+    // 购买失败时候回到收藏页面
+        If CmpColorEx("595|177|46362B,599|265|46362B,592|480|46362B,593|678|4675EE,380|1077|4670EE",0.9) = 1 Then
+            RandomTap (381,1140,5)
+        End If
+    	// 外界面
+        If CmpColorEx("597|82|4675EE,706|30|665041,414|780|FFFFFF,595|691|46362B,683|1171|665041",0.9) = 1 Then
+            RandomTap 374, 833, 8
+            Delay 500
+        End If
+        // 进入道具界面
+        If CmpColorEx("671|219|665041-202020,587|217|BA9D82-202020,456|108|50BBFF-202020,675|1237|FFFFFF-202020,70|833|FFEEEE-202020",0.9) = 1 Then
+            RandomTap(521, 633,5)
+        End If
+        Dim count = SmartOcr(54,1166,83,1229,"FFFFFF-808080")
+        If IsNull(count) = True Then 
+            Goto restart
+        End If
+        If Int(count) <= Int(number) Then 
+        	// 如果开启数量判断
+            If checkMinCountFlag = True Then 
+                Dim tagCountTextX,tagCountTextY
+                FindPic 443,89,490,373,"Attachment:抢数量标识.png","202020",0,0.7,tagCountTextX,tagCountTextY
+                //Dim ocrMinCount = SmartOcr(454,tagCountTextY+50,480,364,"594D42-909090|594D42-909090")
+                Dim ocrMinCount = Ocr(454, tagCountTextY + 50, 500, 364, "594F46-707070", 0.8)
+                //TracePrint ocrMinCount
+                //Dim ocrMinCount = SmartOcr(454,tagCountTextY+50,480,364,"594D42-404040")
+                //TracePrint ocrMinCount
+                
+        		// 如果设置的
+                If Int(ocrMinCount) < Int(minCount) Then 
+                    Goto restart
+                End If
+            End If
+            Do 
+            // 外界面
+                If CmpColorEx("597|82|4675EE,706|30|665041,414|780|FFFFFF,595|691|46362B,683|1171|665041", 0.9) = 1 Then 
+                    Exit Do
+                End If
+            // 在道具界面
+                If CmpColorEx("671|219|665041-202020,587|217|BA9D82-202020,456|108|50BBFF-202020,675|1237|FFFFFF-202020,70|833|FFEEEE-202020",0.9) = 1 Then
+                    RandomTap(56, 1115,5) 
+                End If
+    	      //已经打开确认购买弹窗
+                Dim intX,intY
+                FindColor 17, 579, 413, 949, "4670EE", 2, 1, intX, intY
+                If intX > -1 And intY > -1 Then 
+                  //已购买成功弹窗
+                    If CmpColorEx("644|21|1E1813,645|1230|1E1813,577|348|665041,576|934|665041,182|526|4670EE,182|754|4670EE,169|390|F2F2F2,178|886|F2F2F2",0.7) = 1 Then
+                    
+                        Tap intX,intY
+                        Delay 500
+                        Exit Do
+                    End If
+                     //如果开启了购买最大的模式
+                    If allBuyFlag = True Then 
+                 	 	 //寻找选择数量按钮并点击
+                        Dim selectX,selectY
+                        Dim checkCountFlag = False
+                        Do
+                            If checkCountFlag = True Then 
+                                Exit Do
+                            End If
+                            FindPic 401, 832, 476, 905, "Attachment:抢材料选择购买数量.png", "202020", 0, 0.7, selectX, selectY
+                            If selectX > -1 And selectY > -1 Then 
+                                RandomTap selectX, selectY,2
+                                Do
+                                    If CmpColorEx("283|533|F2F2F2,278|616|F2F2F2,293|757|F2F2F2", 0.7) <> 1 Then 
+                                        Dim selectAllX,selectAllY
+                                        FindPic 74, 443, 417, 911, "Attachment:最大数量.png", "202020", 0, 0.7, selectAllX, selectAllY
+                                        If selectAllX > -1 And selectAllY > -1 Then
+                                            RandomTap selectAllX, selectAllY,2
+                                            Delay 100
+                                            Tap 525, 744
+                                            Delay 100
+                                            Tap intX, intY
+                                            Delay 3000
+                                            checkCountFlag = True
+                                            Exit Do
+                                        End If
+                                    End If
+                                Loop
+                            End If
+                        Loop
+                    Else 
+                        Tap intX, intY
+                    End If
+                    
+                End If
+                 //已购买成功弹窗
+                If CmpColorEx("644|21|1E1813,645|1230|1E1813,577|348|665041,576|934|665041,182|526|4670EE,182|754|4670EE,169|390|F2F2F2,178|886|F2F2F2",0.7) = 1 Then
+                    Tap 205, 641
+                    Delay 500
+                    Exit Do
+                End If
+        
+            Loop
+        End If	
+    Loop 
+End Function
+
+// 抢直播道具(没上架道具)
+Function qiangZhiBo
+		
+	
+    Do
+    	// 是否已经购买标识
+        Dim buyFlag = False
+        Dim qzbX,qzbY
+        FindPic 339,1131,419,1246,"Attachment:无人出售.png","000000",0,0.9,qzbX,qzbY
+        If qzbX = -1 And qzbY = -1 Then 
+        	 // 如果不是无货界面
+            If CmpColorEx("76|522|E2E2E2,394|1253|E2E2E2,229|865|EFEFEF,225|892|EFEFEF,217|892|C5C5C5", 0.9) <> 1 Then 
+                // 如果上架了道具,则点击购买
+                RandomTap 415, 834
+                TracePrint "有货"
+                Do
+                   // 如果在无货界面
+                    If CmpColorEx("76|522|E2E2E2,394|1253|E2E2E2,229|865|EFEFEF,225|892|EFEFEF,217|892|C5C5C5", 0.9) = 1 Then 
+                        Tap 469, 525
+                        Delay 500
+                        Exit Do
+                    End If
+               
+            	 // 外界面
+                    Dim qzbX1,qzbY1
+                    FindPic 339,1131,419,1246,"Attachment:无人出售.png","000000",0,0.9,qzbX1,qzbY1
+                    If qzbX1 = -1 And qzbY1 = -1 And buyFlag = True Then 
+                        Exit Do
+                    End If
+               
+                    If CmpColorEx("671|219|665041-202020,587|217|BA9D82-202020,456|108|50BBFF-202020,675|1237|FFFFFF-202020,70|833|FFEEEE-202020",0.9) = 1 Then
+                        RandomTap(56, 1115,5) 
+                    End If
+                // 已经打开确认购买弹窗
+                    Dim intX,intY
+                    FindColor 17, 579, 413, 949, "4670EE", 2, 1, intX, intY
+                    If intX > -1 And intY > -1 Then 
+                        Tap intX, intY
+                        buyFlag = True
+                    End If
+                Loop
+            Else 
+                Tap 469, 525
+                Delay 500
+            End If	
+        Else 
+			// 没找到则一直刷新
+            RandomsTap 468,753,5
+        End If
+    Loop
+End Function
+// 开始做微信任务
+Function doWeChatTask(speedRatio)
+    openDailyTasks 
+    Delay 2000/speedRatio
+    Dim testCount = 0
+    Do
+        // 如果尝试滑动大于3次
+        If testCount > 3 Then 
+            Exit Do
+        End If
+		//以上两句脚本只需要调用一次
+        Dim intX,intY
+        //FindStr(126,211,502,1275,"前往微信","594D42-505050",0.8,intX,intY)
+        FindPic 127,218,505,1279,"Attachment:wechatText.png","303030",0,0.8,intX,intY
+        If intX > -1 And intY > -1 Then 
+    // 如果找到
+            Dim btnPosX = intX-8
+            Dim btnPosY = intY+360
+    // 获取微信的按钮颜色
+            Dim GetBtnColor = GetPixelColor(btnPosX,btnPosY)
+            If GetBtnColor = "B0874C" Then 
+                ShowMessage ("微信任务尚未完成,即将去完成")
+                Delay 500
+                Tap btnPosX, btnPosY
+                Delay 2000
+                KeyPress("back")
+                Exit Do
+            Else 
+                ShowMessage ("微信任务已完成")
+                backToGameIndex 
+                Exit Do
+            End If
+           
+        Else 
+		   // 如果找不到,则下滑
+            testCount = testCount + 1
+            //TouchDown(184,736)
+            //TouchMove 601, 723, 0, 500
+            //TouchUp (0)
+            Swipe 184,736,601,723,500
+            Delay 1000
+        End If
+    Loop
+End Function
+
+
+// 开始做天空岛任务
+Function doSkyTask(speedRatio)
+    openDailyTasks 
+    Delay 2000/speedRatio
+    Dim testCount = 0
+    Do
+    	 // 如果尝试滑动大于3次
+        If testCount > 3 Then 
+            Exit Do
+        End If
+        Dim intX,intY
+        FindPic 133,219,504,1275,"Attachment:skyText.png","000000",0,0.9,intX,intY
+        If intX > -1 And intY > -1 Then
+            Delay 1000/speedRatio 
+       // 如果找到
+            Dim btnPosX = intX
+            Dim btnPosY = intY+117
+        // 获取天空岛任务的按钮颜色
+            Dim GetBtnColor = GetPixelColor(btnPosX,btnPosY)
+            If GetBtnColor = "B0874C" Then 
+                ShowMessage ("天空岛尚未完成,即将去完成")
+                Delay 1000/speedRatio
+                Tap btnPosX, btnPosY
+                Delay (1000)
+           // 寻找入场按钮
+                Dim moveSkyBtnX,moveSkyBtnY
+                FindMultiColor 49,1046,107,1181,"4670EE-404040","4|145|4670EE-404040",0,0.7,moveSkyBtnX,moveSkyBtnY
+                If moveSkyBtnX > -1 And moveSkyBtnX > -1 Then 
+	            // 点击入场
+                    Tap moveSkyBtnX, moveSkyBtnY
+                    Delay 1000
+                    checkLoading
+                 
+                    Do
+                        If isAutoFight() = True Then 
+                            //TracePrint "已经进入天空岛自动战斗,点击返回按键退出天空岛" 
+	                        // 返回引出退出弹窗
+                            KeyPress ("Back")
+                            Delay 1000/speedRatio
+                        End If
+                   
+                        //Dim skyIconX,skyIconY
+	  	            // 寻找天空岛图标（用于判断是否进入天空岛）
+                        //FindPic 504,584,586,690,"Attachment:skyIcon.png","000000",0,0.8,skyIconX,skyIconY
+                     // 如果已经进入天空岛
+                        //If skyIconX > -1 And skyIconY > -1 Then 
+                            //TracePrint "已经进入天空岛自动战斗,点击返回按键退出天空岛" 
+	                // 返回引出退出弹窗
+                            //KeyPress ("Back")
+                            //Delay 1000
+                        //End If
+	                  // 找出确认退出按钮
+                        Dim skyBackBtnX,skyBackBtnY
+                        FindMultiColor 144,638,244,931,"4670EE-404040","16|3|4670EE-404040,-1|139|4670EE,28|143|4670EE",0,0.9,skyBackBtnX,skyBackBtnY
+                        If skyBackBtnX > -1 And skyBackBtnY > -1 Then 
+                            //TracePrint "点击确认退出" 
+                            Tap skyBackBtnX, skyBackBtnY
+                            Delay 1000/speedRatio
+                            Do
+                                //TracePrint "判断是否出现结算天空岛页面" 
+                               // 确认天空岛结果
+                                If CmpColorEx("123|538|B0874C,129|726|B0874C",0.9) = 1 Then
+                                    Tap 165,635
+                                    Delay 1000/speedRatio
+                                    If CmpColorEx("123|538|B0874C,129|726|B0874C", 0.9) <> 1 Then 
+                                        Exit Function
+                                    End If
+                                End If
+                            Loop
+                        End If
+                       
+                    Loop
+                End If
+           
+            Else 
+                ShowMessage ("天空岛任务已完成")
+                backToGameIndex 
+                Exit Function
+            End If
+        Else 
+        	// 如果找不到,则下滑
+            testCount = testCount + 1
+            // 如果找不到,则下滑
+            //TouchDown(184,736)
+            //TouchMove 601, 723, 0, 500
+            //TouchUp (0)
+            Swipe 184,736,601,723,500
+            Delay 3000
+        End If
+    	// 找是否完成
+        Dim skyTaskFinishX,skyTaskFinishY
+        FindPic 130,214,509,1274,"Attachment:skyTaskFinish.png","000000",0,0.9,skyTaskFinishX,skyTaskFinishY
+        If skyTaskFinishX > -1 And skyTaskFinishY > -1 Then
+            ShowMessage ("天空岛任务已完成")
+            backToGameIndex 
+            Exit Function
+        End If
+    Loop
+   
+End Function
+
+// 开始做奈特金字塔
+Function doNaiTeJinZiTa(speedRatio)
+    openDayPlay 
+    Do
+        Dim intX,intY
+        FindPic 0, 0, 0, 0, "Attachment:奈特.png", "000000", 0, 0.5, intX, intY
+        If intX > -1 And intY > -1 Then 
+            Tap intX, intY
+            Delay 1500/speedRatio
+                    // 轴数据
+            Dim y = 100
+            Dim x = 435
+            For i = 0 To 2
+                Tap x+(i*70),y
+                Delay 500/speedRatio
+                // 可选择
+                If CmpColorEx("71|1059|4670EE,72|1213|4670EE,41|1079|4670EE,42|1194|4670EE",0.7) = 1 Then
+                         //点击使用跳过
+                    Tap 64,1077
+                    Do
+                       // 判断是否出现选择票数弹窗
+                        If CmpColorEx("539|387|665041,557|800|665041,305|392|41D7FF,187|695|4670EE,180|567|B0874C",0.7) = 1 Then
+                            Tap 279,851
+                            Delay 500/speedRatio
+                            Tap 180,731
+                            Delay 500/speedRatio
+                            TracePrint "选择完最大的票数,即将进入奈特地图"
+                        End If
+                            // 如果进入金字塔地图
+                        If CmpColorEx("442|1225|00CCFF,436|1241|00CCFF,60|417|FFFFFF",0.9) = 1 Then
+                            TracePrint "判断已经入金字塔"
+                            Do
+                                If CmpColorEx("41|305|B0874C,29|456|B0874C,38|540|B0874C,32|728|B0874C,408|470|056BE4,395|800|056CE7",0.7) = 1 Then
+                                    Tap 70,353
+                                    Exit Function
+                                End If
+                                ShowMessage("正在自动战斗")
+                                Delay 3000
+                            Loop
+                        End If 
+                    Loop
+                End If
+            Next
+               // 已经做完
+            Exit Function
+        Else 
+            // 如果没找到,则翻页
+            //TouchDown(340,1207)
+            //TouchMove 340,600, 0, 500
+            //TouchUp (0)
+            Swipe 340,1207,340,600,500
+            Delay 1000
+        End If
+         
+	// 判断是否已经打开日常进度面板
+        //If CmpColorEx("535|1143|FFFFFF,530|949|3B332D,535|880|3B332D", 0.9) = 1 Then 
+		// 判断是否没做
+            //If CmpColorEx("321|817|FFFFFF,313|833|FFFFFF,322|855|FFFFFF,328|836|FFFFFF",0.7) = 1 Then
+                //Tap 320,1072
+                //Delay 1500
+                    // 轴数据
+                //Dim y = 100
+                //Dim x = 435
+                //For i = 0 To 2
+                    //Tap x+(i*70),y
+                    //Delay 500
+                        // 可选择
+                    //If CmpColorEx("71|1059|4670EE,72|1213|4670EE,41|1079|4670EE,42|1194|4670EE",0.7) = 1 Then
+                         //点击使用跳过
+                        //Tap 64,1077
+                        //Do
+                               // 判断是否出现选择票数弹窗
+                            //If CmpColorEx("539|387|665041,557|800|665041,305|392|41D7FF,187|695|4670EE,180|567|B0874C",0.7) = 1 Then
+                                //Tap 279,851
+                                //Delay 500
+                                //Tap 180,731
+                                //Delay 500
+                                //TracePrint "选择完最大的票数,即将进入奈特地图"
+                            //End If
+                            // 如果进入金字塔地图
+                            //If CmpColorEx("442|1225|00CCFF,436|1241|00CCFF,60|417|FFFFFF",0.9) = 1 Then
+                                //TracePrint "判断已经入金字塔"
+                                //Do
+                                    //If CmpColorEx("41|305|B0874C,29|456|B0874C,38|540|B0874C,32|728|B0874C,408|470|056BE4,395|800|056CE7",0.7) = 1 Then
+                                        //Tap 70,353
+                                        //Exit Function
+                                    //End If
+                                    //ShowMessage("正在自动战斗")
+                                    //Delay 3000
+                                //Loop
+                            //End If
+                               //
+                        //Loop
+                    //End If
+                //Next
+            //Else 
+                	// 已经做完
+                //Exit Do
+            //End If
+        //Else 
+            // 点击日常进度按钮
+            //Tap 605, 962
+            //Delay 1500
+        //End If
+    Loop
+End Function
+
+// 轮回后进入主号星力战场
+Function oneManXingLi(statNumber, isZhuJiaoTeam)
+    Rem restarRem
+    openDayPlay 
+    Delay 1000
+    Rem starFightInComeRem
+    Do
+        Dim starFightInComeX,starFightInComeY
+        FindPic 0,0,0,0,"Attachment:星力战场.png","000000",0,0.9,starFightInComeX,starFightInComeY
+        If starFightInComeX > -1 And starFightInComeY > -1 Then 
+        	// 点击进入星力战场
+            Tap starFightInComeX, starFightInComeY
+            Delay 2000
+            Exit Do
+        Else 
+             // 如果没找到,则翻页
+            //TouchDown(340,1207)
+            //TouchMove 340,600, 0, 500
+            //TouchUp (0)
+            Swipe 340,1207,340,600,500
+            Delay 1000
+        End If
+    Loop
+
+    // 找到预设好的星图
+    Dim starMapX,starMapY
+    Do
+        FindStr(133,1067,557,1113,statNumber,"02C75A-808080",0.9,starMapX,starMapY)
+        If starMapX > -1 And starMapY > -1 Then 
+          // 点击设置好的星图
+            Tap starMapX, starMapY
+            Delay 2000
+        End If
+        // 已经进入选择房间时,结束此循环
+        If CmpColorEx("378|29|E6DFD9,216|30|E6DFD9", 0.9) = 1 Then 
+            Exit Do
+        End If
+    Loop
+    Dim firstFindRoom = False
+    // 找房间
+    Do
+    	// 是否存在加载更多星力战场
+        Dim moreTeamX,moreTeamY
+        FindPic 110,659,613,1256,"Attachment:加载更多星力队伍.png","000000",3,0.9,moreTeamX,moreTeamY
+        If moreTeamX > -1 And moreTeamY > -1 Then
+            Tap moreTeamX, moreTeamY
+            Delay 500
+        Else 
+            Dim roomX,roomY
+            FindMultiColor 128, 935, 548, 1086, "5F5144", "", 4, 0.9, roomX, roomY
+            If roomX > -1 And roomY>-1 Then
+                Tap roomX, roomY
+                Delay 500
+          		     		 // 如果有空位
+                If CmpColorEx("86|97|3D352F", 0.9) = 1 Then 
+                		 // 如果需要判断是否有主教
+                    If isZhuJiaoTeam = True Then 
+                        Dim zhujiaoX,zhujiaoY
+                        FindPic 88,306,543,490,"Attachment:主教标题.png","000000",1,0.9,zhujiaoX,zhujiaoY
+                        If zhujiaoX > -1 And zhujiaoY > -1 Then
+                             // 点击申请进入队伍
+                            Tap 72, 949
+                            Delay 500
+                            Do
+                           // 弹出申请弹窗
+                                If CmpColorEx("570|343|665041,571|934|665041,170|416|B0874C,182|903|4670EE", 0.9) = 1 Then 
+                               // 点击确定进入
+                                    Tap 167, 736
+                                   // 检测是否进入队伍
+                                    Delay 10000
+                                // 判断是否在队伍
+                                    Dim inTeamFlag = checkInStarTeam("normal")
+                                // 如果在队伍中,则点击自动战斗
+                                    If inTeamFlag = True Then 
+                                        Tap 69, 421
+                                        Delay 500
+                                        Do
+                                            If CmpColorEx("679|268|665041,681|950|665041,652|983|FFFFFF,572|284|41D7FF",0.9) = 1 Then 
+                                                Dim ocrchar
+                                                ocrchar=Ocr(119,644,250,966,"FFFFFF-505050",0.9)
+                                                If ocrchar = "开始" Then 
+                                                    Tap 174, 801
+                                                End If
+                                                Goto checkTeamMan
+                                                Exit Do
+                                            End If
+                                        Loop
+                                    Else 
+                                        Goto restarRem
+                                        Exit Do
+                                    End If
+                                Else 
+                                    Exit Do
+                                End If
+                            Loop
+                        End If
+                    Else 
+                        // 点击申请进入队伍(不用判断主教)
+                        Tap 72, 949
+                        Delay 500
+                        Do
+                    	// 弹出申请弹窗
+                            If CmpColorEx("570|343|665041,571|934|665041,170|416|B0874C,182|903|4670EE", 0.9) = 1 Then 
+                      	 // 点击确定进入
+                                Tap 167, 736
+                                Delay 10000
+                                // 判断是否在队伍
+                                Dim inTeamFlag1 = checkInStarTeam("normal")
+                                // 如果在队伍中,则点击自动战斗
+                                If inTeamFlag1 = True Then 
+                                    Tap 69, 421
+                                    Delay 500
+                                    Do
+                                        If CmpColorEx("679|268|665041,681|950|665041,652|983|FFFFFF,572|284|41D7FF",0.9) = 1 Then 
+                                            Dim ocrchar1
+                                            ocrchar1=Ocr(119,644,250,966,"FFFFFF-505050",0.9)
+                                            If ocrchar1 = "开始" Then 
+                                                Tap 174, 801
+                                            End If
+                                            Goto checkTeamMan
+                                            Exit Do
+                                        End If
+                                    Loop
+                                Else 
+                                    Goto restarRem
+                                    Exit Do
+                                End If
+                            Else 
+                                Exit Do
+                            End If
+                        Loop
+                    End If
+                End If
+                //TouchDown starMapX - 54, starMapY
+                //TouchMove starMapX -54 + 85,starMapY, 0, 500
+                //TouchUp (0)
+                Swipe starMapX - 54,starMapY,starMapX -54 + 85,starMapY,500
+                Delay 500	
+               
+            Else 
+                If firstFindRoom = False Then 
+                    firstFindRoom  =True
+                	 // 第一次找不到房间,就往上移一行
+                    //TouchDown starMapX - 54, starMapY
+                    //TouchMove starMapX -54 + 85,starMapY, 0, 500
+                    //TouchUp (0)
+                    Swipe starMapX - 54,starMapY,starMapX -54 + 85,starMapY,500
+                    Delay 500
+                Else 
+                  // 非第一次往上移动,则进入下一次循环
+                    Tap 696,27 // 点击返回
+                    Delay 1000
+                    // 重新刷新一次再进入循环
+                    Goto starFightInComeRem
+                    Exit Do
+                End If
+            End If
+        End If    
+    Loop
+    Rem checkTeamMan
+    Do	
+        If checkInStarTeam("5") = True Then 
+            ShowMessage ("队伍正常")
+        Else 
+            ShowMessage ("队伍少人,重新找队伍")
+            Goto restarRem
+            Exit Do
+        End If	
+        Delay 10000
+    Loop
+End Function
+
+//分享图片任务
+Function shareTask(speedRatio)
+    openDailyTasks 
+    Do
+        Dim intX1,intY1
+        FindPic 4,5,713,205,"Attachment:分享图片.png","303030",0,0.9,intX1,intY1
+        If intX1 > -1 And intY1 > -1 Then
+            Tap intX1, intY1
+            Delay 500
+            Exit Do
+        End If
+    Loop 
+    Do
+    // 寻找可以点击分享的按钮
+        Dim intX,intY
+        FindPic 1,1102,631,1273,"Attachment:分享图片按钮.png","202020",0,0.7,intX,intY
+        If intX > -1 And intY > -1 Then
+            Tap intX, intY
+            Delay 2000
+            Exit Do
+        Else 
+	// 如果没找到,则翻页
+            //TouchDown(177,1177)
+            //TouchMove 654,1172, 0, 500
+            //TouchUp (0)
+            swipe 177,1177,654,1172,500
+            Delay 1000
+        End If
+        
+    Loop
+   
+    Do
+    	// 再次兜底分享按钮点击
+        Dim DX1,DY1
+        FindPic 1,1102,631,1273,"Attachment:分享图片按钮.png","202020",0,0.7,DX1,DY1
+        If DX1 > -1 And DY1 > -1 Then
+            Tap DX1, DY1
+            Delay 2000
+        End If
+		// 生成分享海报
+        If CmpColorEx("34|1032|62C705,52|1035|FFFFFF,57|1189|00A0EA,61|1233|00A0EA", 0.9) = 1 Then 
+            Tap 52, 1046
+            Delay 1000
+            Exit Function
+        End If
+    Loop
+End Function
+
+// 做材料副本任务
+Function doCaiLiao(type,levelType, currentManIndex,currentLevel,speedRatio)
+	// 喵码提醒
+    Dim miaoNoticeFlag =  ReadUIConfig("掉落结晶通知")
+    Dim miaoCode = ReadUIConfig("喵码")
+    openDayPlay 
+    Delay 1500/speedRatio
+   // 快速模式 
+    If type = "quick" Then 
+        Do 
+	// 判断是否已经打开日常进度面板
+            If CmpColorEx("535|1143|FFFFFF,530|949|3B332D,535|880|3B332D", 0.9) = 1 Then 
+		// 判断材料日常是否没做
+                If CmpColorEx("437|1061|507BFF,437|1092|507BFF,411|1069|507BFF", 0.9) = 1 Then 
+                    Tap 428, 1072
+                    Delay 1000
+                    // 轴数据
+                    Dim yArray = Array(909,634,379)
+                    Dim xArray =Array(251,335,420)
+                    For i = 1 To 9
+                        Dim tagx,tagy
+                        If i < 4 Then 
+                            tagx = xArray(0)
+                        ElseIf i < 7 Then
+                            tagx = xArray(1)
+                        ElseIf i < 10 Then
+                            tagx = xArray(2)
+                        End If
+                        Dim yu = i Mod 3
+                        If yu = 1 Then 
+                            tagy = yArray(0)
+                        ElseIf yu = 2 Then
+                            tagy = yArray(1)
+                        ElseIf yu = 0 Then
+                            tagy = yArray(2)
+                        End If
+                        Tap tagx,tagy
+                        Delay 500
+                        // 可选择
+                        If CmpColorEx("93|544|4670EE,96|749|4670EE", 0.9) = 1 Then 
+                         //点击使用跳过
+                            Tap 81, 647
+                            Do
+                               // 判断是否出现选择票数弹窗
+                                If CmpColorEx("545|442|665041,531|743|665041,368|424|586EA8,198|437|B0874C,194|702|4670EE", 0.9) = 1 Then 
+                                    Tap 278, 852
+                                    Delay 500
+                                    Tap 192, 758
+                                    Delay 500
+                                End If
+                                If CmpColorEx("148|586|B0874C,150|709|B0874C,505|477|056CE4,502|803|056CE7", 0.9) = 1 Then 
+                                    Tap 155, 592
+                                    Exit Function
+                                End If
+                            Loop
+                        End If
+                    Next
+                Else 
+                	// 已经做完
+                    Exit Do
+                End If
+            Else 
+            // 点击日常进度按钮
+                Tap 605, 962
+                Delay 1500/speedRatio
+            End If
+        Loop
+    // 正常通关
+    ElseIf type = "normal" Then
+        // 是否全通关
+        Dim isAllthrough =  ReadUIConfig("材料通关")
+    	// 前多少个角色能全通关
+        Dim isAllthroughManIndex =  ReadUIConfig("材料通关角色数")
+        Do
+            Dim intX,intY
+            FindPic 17, 23, 554, 1128, "Attachment:材料副本.png", "000000", 0, 0.9, intX, intY
+            If intX > -1 And intY > -1 Then
+                Tap intX, intY
+                Do
+            	// 判断是否进入材料副本选择界面
+                    If CmpColorEx("583|1218|4670EE,583|1171|505052,675|685|665041,148|682|4670EE", 0.9) = 1 Then 
+                        Dim y = 90
+                        Dim x = 105
+                        For i = 0 To 7
+                        	// 如果等级小于150 或者 选择了默认最高档
+                            If Int(currentLevel) < 150 or levelType = 1 Then 
+                                Tap x + (i * 65), y
+                                Delay 500/speedRatio
+                            Else 
+                                Tap 246, 92
+                                Delay 500/speedRatio
+                            End If
+                              
+                             // 可选择
+                            If CmpColorEx("46|1065|4670EE,76|1069|4670EE,36|1217|4670EE,76|1217|4670EE",0.9) = 1 Then
+                             //点击进场
+                                Tap 64, 1077
+                                Delay 500/speedRatio
+                                Do
+                            // 如果星力限制,则往上选一个难度
+                                    Dim intX1,intY1
+                                    FindPic 427, 257, 633, 821, "Attachment:材料要求星力.png", "000000", 0, 0.9, intX1, intY1
+                                    If intX1 > -1 And intY1 > -1 Then 
+                                        Tap 178, 56
+                                        Delay 500/speedRatio
+                                        Tap 64,1077
+                                    End If
+                               // 判断是否出现选择票数弹窗
+                                    If CmpColorEx("543|400|665041,547|844|665041,183|441|B0874C,184|717|4670EE,312|396|41D7FF", 0.8) = 1 Then 
+                                        Delay 500/speedRatio
+                                        Tap 283,856
+                                        Delay 500/speedRatio
+                                        Tap 194,742
+                                        Delay 500/speedRatio
+                                    End If
+                            // 判断是否进入进入材料副本选择buff弹窗
+                                    If CmpColorEx("649|119|665041,631|621|665041,643|1205|665041,361|117|41D7FF,362|268|41D7FF,71|598|B0874C,78|733|4670EE,59|1067|F2F2F2", 0.9) = 1 Then 
+                                        Tap 76,744
+                                    End If
+                            // 如果进入自动战斗
+                                    If isAutoFight() = True Then 
+                                        TracePrint "已经进入材料副本自动战斗"
+                                        Dim isWaitExit = False
+                                        Do
+                                        	// 如果没设置通关模式 或 设置了通关模式但角色下标已经超过了设置的数值,则只通关第一关
+                                            If isAllthrough = False or (isAllthrough = True And Int(currentManIndex)> Int(isAllthroughManIndex)) Then 
+                                        		 // 如果通过第一关(以后可以做配置选择通过哪一关)
+                                                If CmpColorEx("562|467|5F2B37,575|487|E5DCDE,559|513|5F2B38,536|517|00D7DF",0.9) = 1 Then
+                                                    If isWaitExit = False Then 
+                                                        TracePrint "只能通过第一关,点击退出按钮"
+                                                        KeyPress ("back")
+                                                    End If
+                                                End If
+                                            End If 
+                                	     
+                                    // 弹出离开确认弹窗
+                                            If CmpColorEx("532|422|665041,549|798|665041,193|569|B0874C,184|703|B0874C,255|653|F2F2F2", 0.9) = 1 Then 
+                                                Tap 188, 710
+                                            // 记录曾经点击过离开
+                                                isWaitExit = True
+                                                TracePrint "已经点击确认材料副本返回到首页按钮"
+                                            End If
+                                    // 如果弹出结算页面
+                                            If CmpColorEx("516|821|0569E7,514|465|056AE4,174|462|B0874C,161|570|B0874C", 0.9) = 1 Then 
+                                       	  		 // 先检测是否爆了高级或者最高级
+                                                If miaoNoticeFlag = True And miaoCode <> "" Then 
+                                                    Dim gaojiFlag,zuigaojiFlag
+                                                    Dim gaojiX,gaojiY
+                                                    FindPic 70,0,563,1198,"Attachment:高级道具结晶.png","505050",0,0.7,gaojiX,gaojiY
+                                                    If gaojiX > -1 And gaojiY > -1 Then 
+                                                        gaojiFlag = True
+                                                    End If
+                                                    Delay 1500/speedRatio
+                                                    Dim zuigaojiX,zuigaojiY
+                                                    FindPic 70,0,563,1198,"Attachment:最高级道具结晶.png","505050",0,0.7,zuigaojiX,zuigaojiY
+                                                    If zuigaojiX > -1 And zuigaojiY > -1 Then 
+                                                        zuigaojiFlag = True
+                                                    End If
+                                                    If gaojiFlag = True or zuigaojiFlag =True Then 
+                                                        Dim templateStr= "第" & currentManIndex & "号角色材料副本爆了"
+                                                        If gaojiFlag = True Then 
+                                                            templateStr = templateStr & "高级道具结晶;"
+                                                        End If
+                                                        If zuigaojiFlag = True Then 
+                                                            templateStr = templateStr & "最高级道具结晶"
+                                                        End If
+                                                        noticeMiao(miaoCode, templateStr)
+                                                    End If
+                                                End If	
+                                                Delay 2000/speedRatio	
+                                                Tap 170, 351
+                                                Exit Function
+                                            End If
+                                            // 死亡界面
+                                            If CmpColorEx("66|789|FF5CC8,97|572|8DFFFF,79|464|B0874C,100|734|B0874C,98|875|4670EE", 0.9) = 1 Then 
+                                                Tap 93,399
+                                            End If
+                                            Delay 2000
+                                        Loop
+                                    End If
+                                Loop
+                            ElseIf i = 7 Then
+                                Exit Function
+                            End If
+                        Next
+                     
+                    End If
+           	
+              
+               
+                Loop
+            Else 
+         // 如果没找到,则翻页
+                //TouchDown(340,1207)
+                //TouchMove 340,600, 0, 500
+                //TouchUp (0)
+                swipe 340,1207,340,600,500
+                Delay 1000
+            End If
+        Loop
+      
+   
+     
+    End If
+End Function
+
+// 做周常副本
+Function doBaoShi(type,mainManType,currentManIndex,speedRatio)
+  // 获取当前的星期 
+    Dim dayNumber = DateTime.WeekDay()
+    // 是否通关最高档次
+    Dim isLastThrough =  ReadUIConfig("小号周常副本最高")
+    // 前多少个角色通关周常副本最高角色数
+    Dim isLastThroughManIndex =  ReadUIConfig("小号最高周常副本数")
+    // 是否只通过第一个档次  ---- 如果没设置通关最高档 或 设置了通关最高档但角色下标已经超过了设置的数值,则只通关第一个档次
+    Dim firstFlag = mainManType = False And (isLastThrough = False or (isLastThrough = True And Int(currentManIndex) > Int(isLastThroughManIndex)+ 1))
+    openDayPlay 
+    Delay 1500/speedRatio
+	// 快速模式
+    If type = "quick" Then 	
+        Do
+    	// 判断是否已经打开日常进度面板
+            If CmpColorEx("535|1143|FFFFFF,530|949|3B332D,535|880|3B332D", 0.9) = 1 Then 
+             // 判断周常日常是否没做
+                If CmpColorEx("229|1037|507BFF,229|1066|507BFF,231|1099|507BFF,205|1068|507BFF,204|1095|507BFF", 0.9) = 1 Then 
+                    Tap 217, 1078
+                    Delay 1000/speedRatio
+                    // 轴数据
+                    Dim yArray = Array(929,642,364)
+                    Dim xArray =Array(207,291,380)
+                    For i = 1 To 9
+                        Dim tagx,tagy
+                        If i < 4 Then 
+                            tagx = xArray(0)
+                        ElseIf i < 7 Then
+                            tagx = xArray(1)
+                        ElseIf i < 10 Then
+                            tagx = xArray(2)
+                        End If
+                        Dim yu = i Mod 3
+                        If yu = 1 Then 
+                            tagy = yArray(0)
+                        ElseIf yu = 2 Then
+                            tagy = yArray(1)
+                        ElseIf yu = 0 Then
+                            tagy = yArray(2)
+                        End If
+                        Tap tagx,tagy
+                        Delay 500
+                        // 可选择
+                        If CmpColorEx("104|540|4670EE,100|746|4670EE",0.9) = 1 Then
+                         //点击使用跳过
+                            Tap 81, 647
+                            Do
+                               // 判断是否出现选择票数弹窗
+                                If CmpColorEx("542|443|665041,560|774|665041,308|397|41D7FF,195|433|B0874C,188|709|4670EE",0.9) = 1 Then
+                                    Tap 283,850
+                                    Delay 500/speedRatio
+                                    Tap 193,793
+                                    Delay 500/speedRatio
+                                End If
+                                If CmpColorEx("148|586|B0874C,150|709|B0874C,505|477|056CE4,502|803|056CE7", 0.9) = 1 Then 
+                                    Tap 155, 592
+                                    Exit Function
+                                End If
+                            Loop
+                        ElseIf i = 9 Then
+                            Exit Function
+                        End If
+                    Next
+                Else
+                 // 已经做完
+                    Exit Do
+                End If
+            Else 
+            // 点击日常进度按钮
+                Tap 605, 962
+            End If
+        Loop
+        // 正常通关模式
+    ElseIf type = "normal" Then
+        Do
+            Dim intX,intY
+            FindPic 14,11,557,1273, "Attachment:周常副本.png", "000000", 0, 0.7, intX, intY
+            If intX > -1 And intY > -1 Then
+                Tap intX, intY
+                Do
+            	// 判断是否进入周常副本选择界面
+                    If CmpColorEx("678|1244|FFFFFF,668|964|665041,649|390|665041,651|22|544134,57|855|FFFFFF,65|846|957A61,68|829|957A61", 0.9) = 1 Then 
+                    // 如果是星期5/6/7 均选择最后一个
+                        If dayNumber >= 5 Then 
+                            Tap 577, 1138
+                            Delay 500/speedRatio
+                        End If
+                        Dim y = 60
+                        Dim x = 90
+                        For i = 0 To 6
+                            If firstFlag <> True Then 
+                                Tap x + (i * 70), y
+                                Delay 500
+                            Else 
+                            	// 点击简单模式
+                                Tap 406, 98
+                                Delay 500/speedRatio
+                            End If
+                          //如果还有入场次数
+                            If CmpColorEx("47|1041|4670EE,61|1243|4670EE",0.9) = 1 Then
+                               //点击入场
+                                Tap 70, 1103
+                                Do
+                        	  //判断是否出现选择票数弹窗
+                                    If CmpColorEx("573|380|665041,570|896|665041,313|392|41D7FF,182|452|B0874C,192|708|4670EE",0.9) = 1 Then
+                                        Tap 286,861
+                                        Delay 500/speedRatio
+                                        Tap 190,738
+                                        Delay 500/speedRatio
+                                    End If
+                             //是否弹出结算页面
+                                    If CmpColorEx("508|796|056CE7,510|475|066DE5,160|464|B0874C,154|561|B0874C",0.9) = 1 Then
+                                        Tap 161,403
+                                        Exit Function
+                                    End If
+                                    Delay 1000/speedRatio
+                                Loop
+                            ElseIf firstFlag <> True And i = 6 Then
+                                Exit Function
+                            ElseIf firstFlag = True Then
+                                Exit Function
+                            End If
+                        Next
+                 	  
+                    End If
+                Loop
+            Else 
+            // 如果没找到,则翻页
+                //TouchDown(340,1207)
+                //TouchMove 340,600, 0, 500
+                //TouchUp (0)
+                Swipe 340,1207,340,600,500
+                Delay 1000
+            End If
+        Loop
+      
+    End If
+End Function
+
+// 做怪物公园
+Function doGuaiWu(type, speedRatio)
+    Dim quickToNormal = False
+    openDayPlay 
+    Delay 1500/speedRatio
+	// 快速模式
+    If type = "quick" Then 
+        Do
+    	// 判断是否已经打开日常进度面板
+            If CmpColorEx("535|1143|FFFFFF,530|949|3B332D,535|880|3B332D", 0.9) = 1 Then 
+                Swipe 87,892,681,792,500
+                Delay 1500
+             // 判断怪物公园是否没做
+                If CmpColorEx("106|1038|507BFF,104|1123|507BFF,80|1039|507BFF,78|1115|507BFF",0.9) = 1 Then
+                    Tap 95,1073
+                    Delay 1000
+                    Dim intX,intY
+                    FindPic 361,177,680,1059,"Attachment:超过可跳过.png","000000",0,0.9,intX,intY
+                    If intX > -1 And intY > -1 Then
+                       // 如果超出45次可以跳过的次数则直接跳过此任务
+                        Exit Function
+                    End If
+                    // 轴数据
+                    Dim yArray = Array(929,642,364)
+                    Dim xArray =Array(207,291,380)
+                    For i = 1 To 9
+                        //Dim tagx,tagy
+                        //If i < 4 Then 
+                            //tagx = xArray(0)
+                        //ElseIf i < 7 Then
+                            //tagx = xArray(1)
+                        //ElseIf i < 10 Then
+                            //tagx = xArray(2)
+                        //End If
+                        //Dim yu = i Mod 3
+                        //If yu = 1 Then 
+                            //tagy = yArray(0)
+                        //ElseIf yu = 2 Then
+                            //tagy = yArray(1)
+                        //ElseIf yu = 0 Then
+                            //tagy = yArray(2)
+                        //End If
+                        //Tap tagx,tagy
+                        // 判断第一个关卡是否拥有跳过的条件
+                        If CmpColorEx("684|215|665041,177|213|E1E1E1,390|243|6F563F,409|248|CAC2BB",0.9) = 1 Then
+                        //走进来则证明条件不符合,则走正常怪物公园
+                            quickToNormal = True
+                            Exit Do
+                        End If
+                        // 点击第一个关卡
+                        Tap 412,357
+                        Delay 500/speedRatio
+                        // 可选择
+                        If CmpColorEx("104|540|4670EE,100|746|4670EE",0.9) = 1 Then
+                         //点击使用跳过
+                            Tap 81, 647
+                            Do
+                            	// 判断是否金额不足
+                                Dim intX2,intY2
+                                FindStr 433,556,630,722, "金额不足", "3FE7FF-808080", 0.9, intX2, intY2
+                                If intX2 > -1 And intY2 > -1 Then
+                                    Exit Function
+                                End If
+
+                                //判断是否出现选择票数弹窗
+                                If CmpColorEx("542|443|665041,560|774|665041,308|397|41D7FF,195|433|B0874C,188|709|4670EE",0.9) = 1 Then
+                                    Tap 283,850
+                                    Delay 500
+                                    Tap 193,793
+                                    Delay 500
+                                End If
+                                If CmpColorEx("148|586|B0874C,150|709|B0874C,505|477|056CE4,502|803|056CE7", 0.9) = 1 Then 
+                                    Tap 155, 592
+                                    Exit Function
+                                End If
+                            Loop
+                        ElseIf i = 9 Then
+                            Exit Function
+                        End If
+                    Next
+                Else
+                 // 已经做完
+                    Exit Do
+                End If
+            Else 
+            // 点击日常进度按钮
+                Tap 605, 962
+            End If
+        Loop
+        Delay 300
+        // 来自快速跳过不符合条件
+        If quickToNormal = True Then 
+            openDayPlay 
+            Delay 300
+            Do
+                Dim guaiwuX,guaiwuY
+                FindPic 0,0,0,0,"Attachment:怪物公园.png","000000",0,0.7,guaiwuX,guaiwuY
+                If guaiwuX > -1 And guaiwuY > -1 Then
+                    Tap guaiwuX, guaiwuY
+                    Delay 1000
+                    Exit Do
+                Else 
+                    Swipe 340,1207,340,600,500
+                    Delay 1000
+                End If
+            Loop
+            Do
+            	// 如果已经进入怪物选择怪面
+                If CmpColorEx("683|35|FFFFFF,701|1211|665041,33|832|957A61,104|56|E1DEDC",0.9) = 1 Then
+                    For 2
+                        Swipe 568, 258, 587, 1047, 500
+                        Delay 300
+                    Next
+                    Delay 500 / speedRatio
+                    // 点击最低档
+                    Tap 570, 130
+                    Delay 500
+                    // 如果可以入场
+                    If CmpColorEx("46|1084|4670EE", 0.9) = 1 Then 
+                        Tap 73, 1095
+                        Delay 200
+                        Do
+                      	// 弹出选择票数弹窗
+                            If CmpColorEx("198|343|F2F2F2,450|340|FFFFFF,578|336|665041,170|661|4670EE,167|440|B0874C",0.9) = 1 Then
+                                Tap 283, 853
+                                Delay 500/speedRatio
+                                Tap 186, 750
+                            End If
+                        // 选择buff弹窗
+                            If CmpColorEx("693|351|665041,694|931|665041,164|605|FFFFFF,411|909|1F57AB,77|704|4670EE", 0.9) = 1 Then 
+                                Tap 73, 725
+                                Delay 1000
+                                checkLoading 
+                            End If
+                         // 打完退场
+                            If CmpColorEx("650|265|CBF9FD,200|246|1AAEE7,64|322|B0874C,65|557|B0874C", 0.9) = 1 Then 
+                                Tap 75, 313
+                                Delay 1000
+                                checkLoading 
+                                Exit Function
+                            End If
+                         // 意外牺牲
+                            If CmpColorEx("640|562|FFFFFF,633|603|FFFFFF,640|705|FFFFFF,603|738|4971E7,605|545|507BFF", 0.9) = 1 Then 
+                                Tap 86, 457
+                                Delay 1000
+                                checkLoading 
+                                Exit Function
+                            End If
+                            Delay 1000
+                        Loop
+                    Else 
+                      // 不满足入场条件,则结束
+                        Exit Function
+                    End If
+                End If
+                Delay 500 / speedRatio
+                
+            Loop
+        End If
+    End If
+End Function
+
+// 做精英副本
+Function doJingYing(type,mainManType,currentManIndex,speedRatio)
+    openDayPlay 
+    Delay 1500/speedRatio
+    // 是否通关最高档次
+    Dim isLastThrough =  ReadUIConfig("小号组队精英副本最高")
+    // 前多少个角色通关精英副本最高角色数
+    Dim isLastThroughManIndex =  ReadUIConfig("小号最高精英副本数")
+    // 是否只通过第一个档次  ---- 如果没设置通关最高档 或 设置了通关最高档但角色下标已经超过了设置的数值,则只通关第一个档次
+    Dim firstFlag = mainManType = False And (isLastThrough = False or (isLastThrough = True And Int(currentManIndex) > Int(isLastThroughManIndex)+ 1))
+   // 如果是第一个副本
+    If type = "normal" Then 
+        Do
+    	// 判断是否已经打开日常进度面板
+            If CmpColorEx("535|1143|FFFFFF,530|949|3B332D,535|880|3B332D", 0.9) = 1 Then 
+             // 判断精英副本是否没做
+                If CmpColorEx("373|817|FFFFFF,364|839|FFFFFF,374|855|FFFFFF,380|834|FFFFFF",0.9) = 1 Then
+                    Tap 377, 1051
+                    Do
+                        Delay 2000/speedRatio
+                 // 如果已进入选择精英副本界面
+                        If CmpColorEx("602|50|573CBC,648|138|665041,65|834|B0874C,679|1244|FFFFFF", 0.9) = 1 Then 
+                            Delay 1000/speedRatio
+                            If firstFlag = True Then 
+                                // 选择第一个档次
+                                For 2
+                                    //TouchDown(571, 121)
+                                    //TouchMove 20,130, 0, 500
+                                    //TouchUp (0)
+                                    Swipe 571, 121,20,130,500
+                                    Delay 1000
+                                Next
+                                Delay 500
+                            // 点击第一个精英副本
+                                Tap 532, 125
+                                Delay 500 
+                            // 点击创建房间
+                                Tap 53, 893
+                            Else 
+                               // 选择最高档次
+                                For 2
+                                    //TouchDown(57,123)
+                                    //TouchMove 526,118, 0, 500
+                                    //TouchUp (0)
+                                    Swipe 57, 123,526,118,500
+                                    Delay 1000
+                                Next
+                                // 进入能打的最大档
+                                // 最底下的那档点记录
+                                Dim templatePoint = Array(40,124)
+                                Do
+                                    Tap templatePoint(0), templatePoint(1)
+                                    Delay 500
+                                	// 如果不能进入,则标准点位置调整
+                                    If CmpColorEx("60|831|B0874C,54|992|B0874C,63|1055|4670EE,68|1233|4670EE", 0.9) <> 1 Then 
+                                        templatePoint(0) = templatePoint(0) + 100
+                                        // 如果已到顶,则先翻一页
+                                        If templatePoint(0) = 540 Then 
+                                            //TouchDown(571, 121)
+                                            //TouchMove 20,130, 0, 500
+                                            //TouchUp (0)
+                                            Swipe 571, 121,20,130,500
+                                            // 复位基础位置
+                                            templatePoint(0) = 40
+                                        End If
+                                        Delay 800/speedRatio
+                                    Else 
+                                	// 如果可以进入,则快速组队
+                                        Tap 58, 1118
+                                        Exit Do
+                                    End If
+                                Loop
+                            End If
+                        	
+                            
+                        End If
+                   	// 弹出选择票数弹窗
+                        If CmpColorEx("566|427|665041,575|739|665041,574|854|665041,181|449|B0874C,192|708|4670EE,296|863|957A61", 0.9) = 1 Then 
+                            Tap 283, 853
+                            Delay 500/speedRatio
+                            Tap 186, 750
+                            Delay 1000/speedRatio
+                            checkLoading 
+                        End If 
+                        // 是否已经入等待大厅
+                        If CmpColorEx("495|60|4670EE,504|226|4670EE,408|41|B0874C,404|164|B0874C", 0.9) = 1 Then 
+                            Tap 498, 121
+                            Delay 1000
+                            checkLoading
+                        End If
+                        
+                        
+                        // 是否已完成精英副本
+                        // 如果是通关第一关的模式
+                        If firstFlag = True Then 
+                            If CmpColorEx("162|447|B0874C,152|330|B0874C,153|558|B0874C,150|729|B0874C,517|557|0C48B8-202020,512|705|0C4ABB-202020",0.9) = 1 Then
+                                Tap 158, 446
+                                Delay 1000
+                                Exit Function
+                            End If
+                        Else 
+                        // 如果是通关最后一档次的模式
+                            If CmpColorEx("404|443|0568E2,407|845|0665E5,28|313|B0874C,30|577|B0874C", 0.9) = 1 Then 
+                               // 如果是主号模式,则购买通关奖励
+                                If mainManType = True Then 
+                                    Dim count = 0
+                                    // 点击金币购买奖励
+                                    Tap 178, 962
+                                    Do
+                                        // 如果尝试超过3次循环 则结束
+                                        If count > 3 Then 
+                                            Exit Do
+                                        End If
+                                         // 如果弹出金币确认购买弹窗
+                                        If CmpColorEx("139|344|F2F2F2,145|893|F2F2F2,144|637|F2F2F2,172|601|B0874C,188|726|4670EE", 0.9) = 1 Then 
+                                            Tap 185, 767
+                                            Delay 500
+                                            Exit Do
+                                        End If
+                                        count = count+ 1
+                                        Delay 500
+                                    Loop
+                                End If 
+                                Tap 60, 466
+                                Delay 1000/speedRatio
+                                Exit Function
+                            End If
+                        End If
+                       
+                       
+                    Loop
+            
+                Else
+                 // 已经做完
+                    Exit Function
+                End If
+            Else 
+            // 点击日常进度按钮
+                Tap 605, 962
+            End If
+        Loop
+     // 能打的最大的
+    ElseIf type = ""
+    End If
+	
+End Function
+
+
+//公会签到+领取树祝福/ 篝火 / 图书馆 
+Function gonghuilogin(type,speedRatio)
+    toMoreMenu 
+    // 点击公会
+    Tap 416,875
+    Do
+    	// 如果没加入公会
+        If CmpColorEx("666|360|665041,677|539|665041,418|642|4AE3FF-202020,415|234|36CFFF-202020,506|1047|C5FBFF-202020", 0.9) = 1 Then 
+            Tap 373, 624
+        End If
+    	// 在选择加入公会界面
+        If CmpColorEx("54|202|00A0EA,56|271|00A0EA,558|103|4675EE,670|467|665041,433|922|4675EE,42|961|4670EE,52|1244|EBEBEB",0.9) = 1 Then
+            Tap 35, 232
+            Delay 1000
+    		// 弹出确认加入公会弹窗
+            If CmpColorEx("163|416|B0874C,154|565|B0874C,150|701|4670EE,150|864|4670EE,564|486|665041,591|141|132142", 0.9) = 1 Then 
+                Tap 172,779
+            End If
+        End If
+    	// 已经进入公会界面
+        If CmpColorEx("561|30|4675EE,603|30|4675EE,651|71|544134,649|120|665041,549|735|6E5F51,548|1016|6E5F51",0.6) = 1 Then
+            If type = "normal" Then 
+                Delay 4000
+    	 // 领取公会领地树
+                If CmpColorEx("110|777|1031FC", 0.9) = 1 Then 
+                    Tap 69, 711
+                    Delay 1000
+    	 // 领取领地树确认弹窗
+                    If CmpColorEx("451|376|FCC576,575|456|665041,569|855|665041,116|724|4670EE,115|564|B0874C", 0.9) = 1 Then 
+                        Tap 120, 741
+                        backToGameIndex
+                    End If
+                End If
+                
+                // 捐工会图书馆
+                Dim juan =  ReadUIConfig("捐图书馆")
+                If juan = True Then 
+                    toMoreMenu 
+                    // 点击公会
+                    Tap 416,875
+                    Delay 1000
+                    Do
+                  	// 如果不在公会建筑页面
+                        If CmpColorEx("349|25|4675EE,567|214|307FF2", 0.9) <> 1 Then 
+                  		  // 点击工会建筑
+                            Tap 314, 63
+                        Else 
+                            Delay 1000
+                  		// 如果在公会建筑页面
+                            Do
+                  		// 如果可以点击捐赠
+                                If CmpColorEx("160|369|B0874C,158|454|B0874C", 0.9) = 1 Then 
+                                    Tap 157, 400
+                                    Delay 1000
+                                    
+                                    Do
+                                        Dim refrimBtnConfig = findConfrimBtn()
+                                        If refrimBtnConfig <> Null Then 
+                                            Tap refrimBtnConfig(0), refrimBtnConfig(1)
+                                            Delay 1500
+                                        Else 
+                                            Exit Do
+                                        End If
+                                       
+                                    Loop
+                                 
+                                    
+                                Else 
+                                    Exit Function
+                                End If
+                            Loop
+                        End If
+                    Loop
+                Else 
+                    Exit Function
+                  	
+                End If
+            	
+                // 篝火模式
+            ElseIf type = "gouhuo" Then
+              
+                Do	
+             		// 判断是否弹出进入工会二次确认弹窗
+                    If CmpColorEx("575|348|665041,579|908|665041,179|422|B0874C,184|728|4670EE,205|643|F2F2F2", 0.9) = 1 Then 
+                        Tap 175, 733
+                        Delay 1000
+                        checkLoading 
+                        Delay 5000
+                        Exit Do
+                    Else 
+                        Delay 1000
+                        Tap 400, 846
+                    End If
+                Loop
+             		// 等待4秒钟完成篝火
+                Exit Function
+            End If
+       
+        End If
+    Loop
+   
+End Function
+
+// 武林道场
+Function DoWuLin(mainManType,speedRatio)
+    openDayPlay 
+    Delay 1000/speedRatio
+    Do
+        Dim intX1,intY1
+        FindPic 0,0,0,0,"Attachment:武林道场.png","000000",0,0.7,intX1,intY1
+        If intX1 > -1 And intY1 > -1 Then
+            Tap intX1, intY1
+            Delay 1500/speedRatio
+            Do
+            	//上周已做过,这周的提示弹窗
+                If CmpColorEx("648|360|665041,660|525|665041,634|770|665041,642|883|665041,48|540|4670EE,61|737|4670EE", 0.9) = 1 Then 
+                    Tap 66,546
+                End If
+                // 境界提升弹窗
+                If CmpColorEx("705|499|1C1612,691|838|1C1612,549|445|665041,576|864|665041,474|491|3F171B,471|732|3F171B,192|559|4670EE,206|737|4670EE", 0.9) = 1 Then 
+                    Tap 181,566
+                End If
+              // 是否已经入武道选择界面
+                If CmpColorEx("646|66|544134,646|115|665041,653|1110|665041,672|1164|FFFFFF,681|1250|FFFFFF,27|909|957A61,29|966|957A61,56|973|FFFFFF", 0.9) = 1 Then 
+                    Delay 1000/speedRatio
+            	// 可入场
+                    If CmpColorEx("51|1056|4670EE,56|1227|4670EE", 0.9) = 1 Then 
+                    	// 打开自动战斗
+                        If CmpColorEx("675|375|C0B5AC,690|412|443A32,691|445|443A32", 0.9) = 1 Then 
+                            Tap 677, 423
+                            Delay 500
+                        End If
+                        Tap 50, 1117
+                        Delay 1000/speedRatio
+                    Else 
+            	// 已完成
+                        Exit Function
+                    End If
+                End If
+                // 选择增益弹窗
+                If CmpColorEx("622|294|665041,634|884|665041,130|545|4670EE,135|743|4670EE,81|552|4670EE,83|721|4670EE,513|269|F2F2F2,518|999|F2F2F2",0.9) = 1 Then
+                    Tap 98, 637
+                    Delay 1500                    
+                    checkLoading 
+                End If
+                // 是否进入战斗状态(已经开始boss)
+                If CmpColorEx("472|83|507BFF,475|122|507BFF,622|614|160916,625|569|FFCC8D", 0.9) = 1 Then 
+                    Dim timeOut = 10000	 // 设置时限
+                    Dim currentTime = 0 // 当前时间
+                    Do
+                        If mainManType = False And (currentTime = 0 or currentTime >= timeOut) Then 
+                            currentTime = 0
+                            KeyPress ("back")
+                            Delay 1000
+                        End If
+                         // 确认离开二次确认弹窗
+                        If CmpColorEx("570|356|665041,573|905|665041,269|482|F2F2F2,277|754|F2F2F2,182|441|B0874C,188|744|4670EE", 0.9) = 1 Then 
+                            Tap 192,747
+                        End If
+                		// 进入结算界面
+                        If CmpColorEx("591|541|DDFFFF,592|730|DDFFFF,80|466|B0874C,73|679|B0874C", 0.9) = 1 Then 
+               			 // 点击离开
+                            Tap 79, 458
+                            checkLoading 
+                            Exit Function
+                        End If
+                        currentTime = currentTime + 1000
+                        Delay 1000
+                    Loop
+                End If
+          
+              
+               
+            Loop
+        Else 
+             // 如果没找到,则翻页
+            //TouchDown(340,1207)
+            //TouchMove 340,600, 0, 500
+            //TouchUp (0)
+            Swipe 340,1207,340,600,500
+            Delay 1000
+        End If
+    Loop
+End Function
+
+//委托任务(跳过)
+Function DoWeiTuo(speedRatio)
+    toMoreMenu 
+    Do
+        Dim intX,intY
+        FindPic 0,0,0,0,"Attachment:委托.png","000000",0,0.7,intX,intY
+        If intX > -1 And intY > -1 Then
+            Tap intX, intY
+            Exit Do
+        Else 
+             //滑动
+            //TouchDown(125,1077)
+            //TouchMove 655,996, 0, 500
+            //TouchUp (0)
+            Swipe 125,1077,655,996,500
+            Delay 2000
+        End If
+    Loop
+    Do
+    	// 首次进入会有提示蒙层
+        If CmpColorEx("711|28|41332A,714|1216|41332A,560|1143|EDF0F3,527|1110|ECEFF1", 0.9) = 1 Then 
+            Tap 198, 1060
+            Delay 1000/speedRatio
+        End If
+        // 如果已经进入委托界面
+        If CmpColorEx("672|29|FFFFFF,710|119|665041,608|892|FFFFFF,606|1244|71CFF3", 0.9) = 1 Then 
+            Delay 800
+            Dim count = int(SmartOcr(666,1111,690,1146,"EAEAEA-808080"))
+          	 // 识别出跳过券数量大于0
+            If count > 0 Then 
+                Delay 500
+            	// 还能接多少个任务
+                Dim emptyTaskCount = 0
+            	// 检测第一个任务是否没接
+                //If CmpColorEx("554|1257|104CFC,574|1255|333DF6", 0.7) = 1 or CmpColorEx("568|1249|758BA4,510|1249|758BA4", 0.7) = 1 Then 
+                If CmpColorEx("568|1249|758BA4,510|1249|758BA4",0.8) = 1  Then 
+                    emptyTaskCount= emptyTaskCount+1
+                End If
+                // 检测第二个任务是否没接
+                //If CmpColorEx("455|1257|1848FB,473|1257|383BF6",0.7) = 1 or CmpColorEx("465|1253|758BA4,387|1248|758BA4",0.7) = 1  Then
+                If CmpColorEx("465|1253|758BA4,387|1248|758BA4",0.8) = 1  Then
+                    emptyTaskCount= emptyTaskCount+1
+                End If
+                // 检测第三个任务是否没接
+                //If CmpColorEx("349|1255|144AFC,367|1259|353CF6",0.7) = 1 or CmpColorEx("358|1252|758BA4,291|1250|758BA4",0.7) = 1 Then
+                If CmpColorEx("358|1252|758BA4,291|1250|758BA4",0.8) = 1 Then
+                    emptyTaskCount= emptyTaskCount+1
+                End If
+                TracePrint emptyTaskCount
+                // 如果可以完成的任务大于0,则去接任务
+                If emptyTaskCount > 0 Then 
+                    Dim finishCount = 0
+                    // 遍历接空数委托任务(默认困难)
+                    Do Until finishCount = emptyTaskCount
+                        TracePrint finishCount,emptyTaskCount
+                        Dim kunNanX,kunNanY,tuiJianX,tuiJianY
+                        FindPic 102, 17, 584, 849, "Attachment:委托困难图标.png", "000000", 0, 0.6, kunNanX, kunNanY
+                        FindPic 102, 17, 584, 849,"Attachment:委托推荐图标.png","000000",0,0.6,tuiJianX,tuiJianY
+                        Delay 500
+                        If kunNanX > -1 And kunNanY > -1 Then
+                            Tap kunNanX, kunNanY
+                            Do
+                            	// 如果弹出任务详情接受弹窗
+                                If CmpColorEx("178|379|6090B7,190|561|0EC1FF,179|852|88B5D3", 0.7) = 1 Then 
+                                    Tap 216, 606
+                                    Delay 1000
+                                    finishCount= finishCount + 1
+                                    Exit Do
+                                End If
+                            Loop
+                        ElseIf tuiJianX > -1 And tuiJianY > -1 Then
+                            Tap tuiJianX, tuiJianY
+                            Do
+                            	// 如果弹出任务详情接受弹窗
+                                If CmpColorEx("178|379|6090B7,190|561|0EC1FF,179|852|88B5D3", 0.7) = 1 Then 
+                                    Tap 216, 606
+                                    Delay 1000
+                                    finishCount=  finishCount + 1
+                                    Exit Do
+                                End If
+                            Loop
+                        Else 
+                          // 刷新委托任务栏
+                            Tap 62, 399
+                            Delay 2000
+                          	  // 如果出现提示弹窗
+                            If CmpColorEx("575|362|665041,578|933|665041,166|400|B0874C,170|914|4670EE", 0.7) = 1 Then 
+                              	// 点击不再提醒
+                                Tap 267, 566
+                                Delay 500
+                              	// 点击确定
+                                Tap 191, 756
+                            End If
+                        End If
+                        Delay 1500
+                    Loop
+                End If
+                Delay 1000
+                For 3
+                    Dim canX,canY
+                    FindPic 262, 864, 628, 1279, "Attachment:委托可做图标.png", "000000", 2, 0.7, canX, canY
+                    Delay 500
+                    If canX > -1 And canY > -1 Then 
+					 	// 点击此任务词条
+                        Tap canX-50, canY-50
+                        Do
+                            // 已经没券了就结束
+                            If CmpColorEx("120|1054|C2C2C2,126|1140|C2C2C2,98|1132|707070", 0.9) = 1 Then 
+                                Exit Function
+                            End If
+							// 点击跳过
+                            If CmpColorEx("119|962|23C5F8,93|1177|096C9F,455|1220|104373,574|1257|333DF6", 0.7) = 1 Then 
+                                Tap 99, 1052
+                                Delay 300
+                                Tap 516,350
+                            End If
+                            //出现首次设备提示弹窗
+                            If CmpColorEx("621|349|665041,622|932|665041,305|377|FFFFFF,217|404|B0874C,228|714|4670EE,219|909|4670EE", 0.9) = 1 Then 
+                                Tap 306, 477
+                                Delay 1000
+                                Tap 240, 739
+                                Delay 1000
+                            End If
+							// 确认领取奖励
+                            If CmpColorEx("710|20|1C1612,716|334|1C1612,711|843|1C1612,708|1249|1C1612,693|346|665041,30|361|F2F2F2,57|920|F2F2F2,64|735|4670EE",0.8) = 1 Then
+                                Tap 88, 629
+                                Do
+                                    // 确认领取任务奖励完毕
+                                    If CmpColorEx("713|20|665041,714|1221|665041,545|1216|FFFFFF,88|1066|616161", 0.8) = 1 Then 
+                                	  // 点击一次此点折叠刚打开的任务
+                                        Tap 521, 1166
+                                        Delay 1000
+                                        Exit Do
+                                    End If
+                                Loop
+                                Exit Do
+                            End If
+                            Delay 500
+                        Loop
+                    Else 
+                        Exit Function
+                    End If
+                Next
+                Exit Function
+            Else 
+          	    // 如果没有跳过券,则不做委托任务
+                Exit Function
+            End If
+        End If
+        Delay 1000
+    Loop
+End Function
+// 设置角色训练场
+Function setXunLian()
+    toMoreMenu 
+    // 找角色训练场打开
+    Do
+        Dim intX,intY
+        FindPic 0,0,0,0,"Attachment:角色训练场.png","303030",0,0.8,intX,intY
+        If intX > -1 And intY > -1 Then
+            Tap intX, intY
+            Exit Do
+        Else 
+             //滑动
+            //TouchDown(125,1077)
+            //TouchMove 655,996, 0, 500
+            //TouchUp (0)
+            Swipe 125,1077,655,996,500
+            Delay 2000
+        End If
+    Loop
+    Do
+    // 如果已经进入训练场弹窗
+        If CmpColorEx("648|101|665041,661|650|665041,650|1166|665041,680|1245|FFFFFF,475|945|2ED9C5,565|99|307FF2,564|32|307FF2", 0.9) = 1 Then 
+            Tap 208,1088
+        End If
+         // 如果弹出上次训练结果弹窗
+        If CmpColorEx("674|359|665041,689|896|665041,613|399|3EA1FF,597|427|3EA1FF,393|375|507BFF,76|569|4670EE", 0.9) = 1 Then 
+            Tap 81,638
+        End If
+    	// 如果进入补充弹窗
+        If CmpColorEx("670|264|665041,663|909|665041,549|540|41D7FF,546|979|41D7FF,93|559|4670EE,114|733|4670EE", 0.9) = 1 Then 
+            Delay 1000
+            Do
+                Dim intX1,intY1
+                FindColor 391, 642, 415, 980, "41D7FF", 0, 0.9, intX1, intY1
+                If intX1 > -1 And intY1 > -1 Then 
+                    Tap intX1, intY1
+                    Delay 200
+                	  	// 如果设置超过300分钟
+                    If CmpColorEx("516|375|CBC4C3,532|379|3BA2BE,519|894|B7AFAD,530|894|3B9CB6", 0.9) = 1 Then 
+                        ShowMessage ("已超过设置上限")
+                        Delay 1500
+                	          //点击确定
+                        Tap 87, 554
+                        Delay 1500
+                        Tap 599, 322
+                        Delay 1000
+                        // 切换2号角色
+                        If CmpColorEx("564|254|307FF2,564|348|307FF2", 0.9) = 1 Then 
+                         	// 如果没解锁
+                            If CmpColorEx("210|1077|C3C3C3,215|1217|C3C3C3,60|1078|C3C3C3,59|1233|C3C3C3", 0.9) = 1 Then 
+                            	// 已超出
+                                setXunLian = "overflow"
+                                Exit Function
+                            Else 
+                         	       //如果已解锁
+                                Tap 208, 1088
+                                Delay 1500
+                         	       // 第二层检测 进入了补充弹窗
+                                If CmpColorEx("670|264|665041,663|909|665041,549|540|41D7FF,546|979|41D7FF,93|559|4670EE,114|733|4670EE", 0.9) = 1 Then 
+                                    Do
+                                        Dim intX2,intY2
+                                        FindColor 391, 642, 415, 980, "41D7FF", 0, 0.9, intX2, intY2
+                                        If intX2 > -1 And intY2 > -1 Then 
+                                            Tap intX2, intY2
+                                            Delay 200
+                                        	// 如果设置超过300分钟
+                                            If CmpColorEx("516|375|CBC4C3,532|379|3BA2BE,519|894|B7AFAD,530|894|3B9CB6", 0.9) = 1 Then 
+                                                ShowMessage ("已超过设置上限")
+                                                Delay 1500
+                	         				    //点击确定
+                                                Tap 87, 554
+                                                Delay 1500
+                                                Tap 594, 504
+                                                Delay 1000
+                                                // 切换第三只角色
+                                                If CmpColorEx("564|615|307FF2,565|600|307FF2",0.9) = 1 Then
+                                                 	// 如果没解锁
+                                                    If CmpColorEx("210|1077|C3C3C3,215|1217|C3C3C3,60|1078|C3C3C3,59|1233|C3C3C3", 0.9) = 1 Then 
+                            	                      // 已超出
+                                                        setXunLian = "overflow"
+                                                        Exit Function
+                                                    Else 
+                                                        //如果已解锁
+                                                        Tap 208, 1088
+                                                        Delay 1500
+                                                        // 第三层检测
+                                                        If CmpColorEx("670|264|665041,663|909|665041,549|540|41D7FF,546|979|41D7FF,93|559|4670EE,114|733|4670EE", 0.9) = 1 Then 
+                                                            Do
+                                                                Dim intX3,intY3
+                                                                FindColor 391, 642, 415, 980, "41D7FF", 0, 0.9, intX3, intY3
+                                                                If intX3 > -1 And intY3 > -1 Then 
+                                                                    Tap intX3, intY3
+                                                                    Delay 200
+                                        	                          // 如果设置超过300分钟
+                                                                    If CmpColorEx("516|375|CBC4C3,532|379|3BA2BE,519|894|B7AFAD,530|894|3B9CB6", 0.9) = 1 Then 
+                                                                        ShowMessage ("已超过设置上限")
+                                                                        Delay 1500
+                	         				                            //点击确定
+                                                                        Tap 87, 554
+                                                                        Delay 1000
+                                                                        setXunLian = "overflow"
+                                                                        Exit Function 
+                                                                    End If
+                                                                Else 
+                                                                 // 没有找到可以点击的时间卡
+                                                                    ShowMessage ("没有可用的时间卡")
+                                                                    Delay 1500
+                   						                           //点击确定
+                                                                    Tap 87, 554
+                                                                    Exit Function 
+                                                                End If
+                                                            Loop
+                                                        End If
+                                                    End If
+                                                Else 
+                                                    setXunLian = "overflow"
+                                                    Exit Function 
+                                                End If
+                                            End If
+                                        Else 
+                                        // 没有找到可以点击的时间卡
+                                            ShowMessage ("没有可用的时间卡")
+                                            Delay 1500
+                   						 //点击确定
+                                            Tap 87, 554
+                                            Exit Function 
+                                        End If
+                                    Loop
+                                End If
+                            End If
+                        End If
+                    End If
+                Else 
+                		// 没有找到可以点击的时间卡
+                    ShowMessage ("没有可用的时间卡")
+                    Delay 1500
+                   		 //点击确定
+                    Tap 87, 554
+                    Exit Function
+                End If
+               
+            Loop
+                         	       
+        End If
+    Loop
+
+End Function
+
+
+
+// 惊喜商店
+Function jingxi()
+    Dim flag =  ReadUIConfig("是否手动惊喜")
+    Dim myHour,myMinute,mySecond ,timeInfoArray,timeStr,resArray
+    Dim timeType =  ReadUIConfig("惊喜时间")
+    Dim timeTypeArray = Array(13,18,22)
+    Dim setTime = timeTypeArray(Int(timeType))
+    Dim haveBaoShi = ReadUIConfig("宝石")
+    Dim shenHuaTuZhi = ReadUIConfig("神话图纸")
+    Dim haveXinYun10 =ReadUIConfig("幸运10")
+    Dim haveXinYun7 =ReadUIConfig("幸运7")
+    Dim heXin =ReadUIConfig("核心")
+    Dim aKaMenPiao =ReadUIConfig("阿卡门票")
+    
+    
+  
+    If flag = False Then 
+    	  // 定点自动点击
+        Do
+    	// 判断是否已经进入商城
+            If CmpColorEx("684|406|665041,680|567|665041,656|1044|665041,709|42|665041,709|117|665041", 0.9) = 1 Then 
+                Exit Do
+            End If
+            timeInfoArray = Split(GetNetworkTime(), " ")
+            timeStr = timeInfoArray(1)
+            resArray = Split(timeStr, ":")
+            myHour = Int(resArray(0))
+            myMinute = Int(resArray(1))
+            mySecond = Int(resArray(2))
+            TracePrint (myHour&":"&myMinute&":"&mySecond)
+            //ShowMessage(myHour&":"&myMinute&":"&mySecond,1000,5,674)
+   		 //循环点击
+            If myHour = setTime And  myMinute = 0 And mySecond >= 1  Then 
+                Tap 563,391
+            End If
+        // 判断是否已经进入商城
+            If CmpColorEx("684|406|665041,680|567|665041,656|1044|665041,709|42|665041,709|117|665041", 0.9) = 1 Then 
+                Exit Do
+            End If
+            Delay 500
+        Loop	
+    End If
+  
+    Do
+    	// 宝石
+        If haveBaoShi = True Then 
+            Do
+                Dim baoshiX,baoshiY
+                FindPic 149,180,554,1249, "Attachment:传说宝箱新.png", "000000", 1, 0.9, baoshiX, baoshiY
+                If baoshiX > -1 And baoshiY > -1 Then 
+                    Tap baoshiX, baoshiY
+                    Do
+          	 // 商品购买弹框
+                        If CmpColorEx("584|1185|665041,577|1112|665041,575|963|665041,673|460|1E1813",0.9) = 1 Then
+                     // 如果已经不能购买
+                            If CmpColorEx("62|1037|C3C3C3,54|1192|C3C3C3", 0.9) = 1 Then 
+                                haveBaoShi = False
+                            // 点击关闭购买弹窗
+                                Tap 675, 1223
+                                Exit Do
+                            Else
+                                Tap 68, 1065
+                            End If
+                        End If
+                 //商品购买二次确认弹窗
+                        If CmpColorEx("621|44|665041,626|388|665041,627|1222|665041,52|820|4670EE,52|951|4670EE,101|1081|4670EE", 0.9) = 1 Then 
+                            Tap 80,967
+                        End If
+                 // 确认购买最后弹窗
+                        If CmpColorEx("507|396|665041,508|607|665041,513|875|665041,171|392|B0874C,174|578|B0874C,171|674|4670EE,172|888|4670EE,191|641|F2F2F2", 0.9) = 1 Then 
+                            Tap 191,778
+                        End If
+              // 弹出结果页弹窗
+                        If CmpColorEx("537|344|665041,546|935|665041,190|385|F2F2F2,188|859|F2F2F2,179|545|4670EE,168|644|4670EE,171|716|4670EE", 0.9) = 1 Then 
+                            Tap 189, 632
+                            haveBaoShi = False
+                            Exit Do
+                        End If
+                    Loop
+                End If
+                Exit Do
+            Loop
+        End If
+      	    // 神话图纸
+        If shenHuaTuZhi = True Then 
+            Do
+                Dim shenHuaTuZhiX,shenHuaTuZhiY
+                FindPic 149,180,554,1249, "Attachment:神话图纸新.png", "000000", 1, 0.9, shenHuaTuZhiX, shenHuaTuZhiY
+                If shenHuaTuZhiX > -1 And shenHuaTuZhiY > -1 Then 
+                    Tap shenHuaTuZhiX, shenHuaTuZhiY
+                    Do
+          	 // 商品购买弹框
+                        If CmpColorEx("584|1185|665041,577|1112|665041,575|963|665041,673|460|1E1813",0.9) = 1 Then
+                     // 如果已经不能购买
+                            If CmpColorEx("62|1037|C3C3C3,54|1192|C3C3C3", 0.9) = 1 Then 
+                                shenHuaTuZhi = False
+                            // 点击关闭购买弹窗
+                                Tap 675, 1223
+                                Exit Do
+                            Else
+                                Tap 68, 1065
+                            End If
+                        End If
+                 //商品购买二次确认弹窗
+                        If CmpColorEx("621|44|665041,626|388|665041,627|1222|665041,52|820|4670EE,52|951|4670EE,101|1081|4670EE", 0.9) = 1 Then 
+                            Tap 80,967
+                        End If
+                 // 确认购买最后弹窗
+                        If CmpColorEx("507|396|665041,508|607|665041,513|875|665041,171|392|B0874C,174|578|B0874C,171|674|4670EE,172|888|4670EE,191|641|F2F2F2", 0.9) = 1 Then 
+                            Tap 191,778
+                        End If
+              // 弹出结果页弹窗
+                        If CmpColorEx("537|344|665041,546|935|665041,190|385|F2F2F2,188|859|F2F2F2,179|545|4670EE,168|644|4670EE,171|716|4670EE", 0.9) = 1 Then 
+                            Tap 189, 632
+                            shenHuaTuZhi = False
+                            Exit Do
+                        End If
+                    Loop
+                End If
+                Exit Do
+            Loop
+        End If
+        // 幸运10
+        If haveXinYun10 = True Then 
+            Do
+                Dim xinYun10X,xinYun10Y
+                FindPic 149,180,554,1249, "Attachment:幸运10.png", "000000", 1, 0.9, xinYun10X, xinYun10Y
+                If xinYun10X > -1 And xinYun10Y > -1 Then 
+                    Tap xinYun10X, xinYun10Y
+                    Do
+          	 // 商品购买弹框
+                        If CmpColorEx("584|1185|665041,577|1112|665041,575|963|665041,673|460|1E1813",0.9) = 1 Then
+                     // 如果已经不能购买
+                            If CmpColorEx("62|1037|C3C3C3,54|1192|C3C3C3", 0.9) = 1 Then 
+                                haveXinYun10 = False
+                            // 点击关闭购买弹窗
+                                Tap 675, 1223
+                                Exit Do
+                            Else
+                                Tap 68, 1065
+                            End If
+                        End If
+                 //商品购买二次确认弹窗
+                        If CmpColorEx("621|44|665041,626|388|665041,627|1222|665041,52|820|4670EE,52|951|4670EE,101|1081|4670EE", 0.9) = 1 Then 
+                            Tap 80,967
+                        End If
+                 // 确认购买最后弹窗
+                        If CmpColorEx("507|396|665041,508|607|665041,513|875|665041,171|392|B0874C,174|578|B0874C,171|674|4670EE,172|888|4670EE,191|641|F2F2F2", 0.9) = 1 Then 
+                            Tap 191,778
+                        End If
+              // 弹出结果页弹窗
+                        If CmpColorEx("537|344|665041,546|935|665041,190|385|F2F2F2,188|859|F2F2F2,179|545|4670EE,168|644|4670EE,171|716|4670EE", 0.9) = 1 Then 
+                            Tap 189, 632
+                            haveXinYun10 = False
+                            Exit Do
+                        End If
+                    Loop
+                End If
+                Exit Do
+            Loop
+        End If
+       // 幸运7
+        If haveXinYun7 = True Then   
+            Do
+                Dim xinYun7X,xinYun7Y
+                FindPic 149,180,554,1249, "Attachment:幸运7.png", "000000", 1, 0.9, xinYun7X, xinYun7Y
+                If xinYun7X > -1 And xinYun7Y > -1 Then 
+                    Tap xinYun7X, xinYun7Y
+                    Do
+          	 // 商品购买弹框
+                        If CmpColorEx("584|1185|665041,577|1112|665041,575|963|665041,673|460|1E1813",0.9) = 1 Then
+                     // 如果已经不能购买
+                            If CmpColorEx("62|1037|C3C3C3,54|1192|C3C3C3", 0.9) = 1 Then 
+                                haveXinYun7 = False
+                            // 点击关闭购买弹窗
+                                Tap 675, 1223
+                                Exit Do
+                            Else
+                                Tap 68, 1065
+                            End If
+                        End If
+                 //商品购买二次确认弹窗
+                        If CmpColorEx("621|44|665041,626|388|665041,627|1222|665041,52|820|4670EE,52|951|4670EE,101|1081|4670EE", 0.9) = 1 Then 
+                            Tap 80,967
+                        End If
+                 // 确认购买最后弹窗
+                        If CmpColorEx("507|396|665041,508|607|665041,513|875|665041,171|392|B0874C,174|578|B0874C,171|674|4670EE,172|888|4670EE,191|641|F2F2F2", 0.9) = 1 Then 
+                            Tap 191,778
+                        End If
+              // 弹出结果页弹窗
+                        If CmpColorEx("537|344|665041,546|935|665041,190|385|F2F2F2,188|859|F2F2F2,179|545|4670EE,168|644|4670EE,171|716|4670EE", 0.9) = 1 Then 
+                            Tap 189, 632
+                            haveXinYun7 = False
+                            Exit Do
+                        End If
+                    Loop
+                End If
+                Exit Do
+            Loop
+        End If
+       
+        // 核心
+        If heXin = True Then 
+            Do
+                Dim heXinX,heXinY
+                FindPic 149,180,554,1249, "Attachment:核心.png", "000000", 1, 0.9, heXinX, heXinY
+                If heXinX > -1 And heXinY > -1 Then 
+                    Tap heXinX, heXinY
+                    Do
+          	 // 商品购买弹框
+                        If CmpColorEx("584|1185|665041,577|1112|665041,575|963|665041,673|460|1E1813",0.9) = 1 Then
+                     // 如果已经不能购买
+                            If CmpColorEx("62|1037|C3C3C3,54|1192|C3C3C3", 0.9) = 1 Then 
+                                heXin = False
+                            // 点击关闭购买弹窗
+                                Tap 675, 1223
+                                Exit Do
+                            Else
+                                Tap 68, 1065
+                            End If
+                        End If
+                 //商品购买二次确认弹窗
+                        If CmpColorEx("621|44|665041,626|388|665041,627|1222|665041,52|820|4670EE,52|951|4670EE,101|1081|4670EE", 0.9) = 1 Then 
+                            Tap 80,967
+                        End If
+                 // 确认购买最后弹窗
+                        If CmpColorEx("507|396|665041,508|607|665041,513|875|665041,171|392|B0874C,174|578|B0874C,171|674|4670EE,172|888|4670EE,191|641|F2F2F2", 0.9) = 1 Then 
+                            Tap 191,778
+                        End If
+              // 弹出结果页弹窗
+                        If CmpColorEx("537|344|665041,546|935|665041,190|385|F2F2F2,188|859|F2F2F2,179|545|4670EE,168|644|4670EE,171|716|4670EE", 0.9) = 1 Then 
+                            Tap 189, 632
+                            heXin = False
+                            Exit Do
+                        End If
+                    Loop
+                End If
+                Exit Do
+            Loop
+        End If
+        
+
+        
+          // 阿卡门票
+        If aKaMenPiao = True Then 
+            Do
+                Dim aKaMenPiaoX,aKaMenPiaoY
+                FindPic 149,180,554,1249, "Attachment:阿卡门票.png", "000000", 0, 0.9, aKaMenPiaoX, aKaMenPiaoY
+                If aKaMenPiaoX > -1 And aKaMenPiaoY > -1 Then 
+                    Tap aKaMenPiaoX, aKaMenPiaoY
+                    Do
+          	 // 商品购买弹框
+                        If CmpColorEx("584|1185|665041,577|1112|665041,575|963|665041,673|460|1E1813",0.9) = 1 Then
+                     // 如果已经不能购买
+                            If CmpColorEx("62|1037|C3C3C3,54|1192|C3C3C3", 0.9) = 1 Then 
+                                aKaMenPiao = False
+                            // 点击关闭购买弹窗
+                                Tap 675, 1223
+                                Exit Do
+                            Else
+                                Tap 68, 1065
+                            End If
+                        End If
+                 //商品购买二次确认弹窗
+                        If CmpColorEx("621|44|665041,626|388|665041,627|1222|665041,52|820|4670EE,52|951|4670EE,101|1081|4670EE", 0.9) = 1 Then 
+                            Tap 80,967
+                        End If
+                 // 确认购买最后弹窗
+                        If CmpColorEx("507|396|665041,508|607|665041,513|875|665041,171|392|B0874C,174|578|B0874C,171|674|4670EE,172|888|4670EE,191|641|F2F2F2", 0.9) = 1 Then 
+                            Tap 191,778
+                        End If
+              // 弹出结果页弹窗
+                        If CmpColorEx("537|344|665041,546|935|665041,190|385|F2F2F2,188|859|F2F2F2,179|545|4670EE,168|644|4670EE,171|716|4670EE", 0.9) = 1 Then 
+                            Tap 189, 632
+                            aKaMenPiao = False
+                            Exit Do
+                        End If
+                    Loop
+                End If
+                Exit Do
+            Loop
+        End If
+    Loop
+End Function
+
+// 补充药瓶
+Function supplementMedicine(checkMedicineCount)
+		// 是否已经购买红
+    Dim isBuyHongFlag = False
+	// 是否已经购买蓝
+    Dim isBuyLanFlag = False
+	// 当前药瓶数据
+    Dim data = checkMedicine()
+    Dim hong = Int(data(0))
+    Dim lan = Int(data(1))
+    TracePrint hong,lan
+	 //读取配置需要检测的血瓶数量
+    Dim count = Int(checkMedicineCount)
+    Delay 1000
+    If hong <= count Then 
+		 //长按
+        Touch 514, 1154, 2000
+        Delay 1000
+        Do
+            If isBuyHongFlag = True Then 
+                Exit Do
+            End If
+        // 是否打开添加药水界面
+            Dim intX,intY
+            FindPic 554,263,715,1002,"Attachment:添加药水.png","000000",0,0.9,intX,intY
+            If intX > -1 And intY > -1 Then 
+                Do
+                    If isBuyHongFlag = True Then 
+                        Exit Do
+                    End If
+            	// 寻找是否正确的模式
+                    Dim intX1,intY1
+                    FindPic 554, 263, 715, 1002, "Attachment:药水模式改变按钮.png", "000000", 0, 0.7, intX1, intY1
+                    If intX1 > -1 And intY1 > -1 Then
+                        Do
+                            If isBuyHongFlag = True Then 
+                                Exit Do
+                            End If
+                    // 寻找购买图标
+                            Dim intX2,intY2
+                            FindPic 36, 340, 616, 945, "Attachment:购买药图标.png", "000000", 0, 0.9, intX2, intY2
+                            If intX2 > -1 And intY2 > -1 Then
+                                Tap intX2, intY2
+                                Do
+                                    If isBuyHongFlag = True Then 
+                                        Exit Do
+                                    End If
+                            	  // 进入到商店界面
+                                    If CmpColorEx("647|46|665041,676|111|FFFFFF,654|1046|665041,501|181|F2F2F2,485|754|FFFFFF", 0.9) = 1 Then 
+                                        Do
+                            	// 点击四级血瓶
+                                            Dim intX3,intY3
+                                            FindPic 12,169,565,1275,"Attachment:4级血瓶.png","000000",0,0.9,intX3,intY3
+                                            If intX3 > -1 And intY3 > -1 Then
+                                                Tap intX3, intY3
+                                                Delay 1000
+                                            End If
+                                // 如果已经打开药瓶购买弹窗
+                                            If CmpColorEx("704|381|1E1813,675|751|E1DEDC,614|1098|665041", 0.9) = 1 Then 
+                                // 选择购买数量
+                                                Tap 58, 862
+                                                Delay 500
+                                	// 选择购买500瓶
+                                                Tap 166, 786
+                                                Delay 500
+                                	// 点击购买
+                                                Tap 68,1108
+                                            End If
+                                // 弹出确认购买二次确认弹窗
+                                            If CmpColorEx("651|147|1E1813,653|593|1E1813,595|1124|1E1813,570|937|665041,554|374|665041,164|366|B0874C,170|911|4670EE",0.9) = 1 Then
+                                                Tap 200, 751
+                                                isBuyHongFlag = True
+                                                Exit Do
+                                            End If
+                                        Loop
+                                    End If
+                                Loop
+                            End If
+                      
+                            Exit Do
+                        Loop
+                    Else 
+				// 若模式不对,则点击切换
+                        Tap 594, 862
+                        Delay 2000
+                    End If
+                    Exit Do
+                Loop
+            End If
+        Loop
+        Delay 500
+        // 去装刚才购买的4级药水
+        backToGameIndex 
+        Touch 514, 1154, 2000
+        Delay 1000
+        Do
+            Dim intX4,intY4
+            FindPic 554, 263, 715, 1002, "Attachment:添加药水.png", "000000", 0, 0.9, intX4, intY4
+            If intX4 > -1 And intY4 > -1 Then
+                Dim intX5,intY5
+                // 没装备时
+                FindPic 30,336,703,943,"Attachment:4级血瓶1.png","000000",0,0.9,intX5,intY5
+                If intX5 > -1 And intY5 > -1 Then
+                    Tap intX5, intY5
+                    Exit Do
+                End If
+                // 正在装备时
+                Dim intX12,intY12
+                FindPic 43,345,572,886,"Attachment:4级血瓶2.png","000000",0,0.9,intX12,intY12
+                If intX12 > -1 And intY12 > -1 Then
+                    Exit Do
+                End If
+            End If	
+        Loop
+    End If
+    backToGameIndex
+    If lan <= count Then 
+		 //长按
+        Touch 525,1226, 2000
+        Delay 1000
+        Do
+        // 没有蓝条的角色
+            If CmpColorEx("538|1212|DCDAD9,519|1231|DAD7D5,521|1238|DAD7D6,542|1244|DAD8D7",0.9) = 1 Then
+                Exit Function
+            End If
+            If isBuyLanFlag = True Then 
+                Exit Do
+            End If
+        // 是否打开添加药水界面
+            Dim intX6,intY6
+            FindPic 554,263,715,1002,"Attachment:添加药水.png","000000",0,0.7,intX6,intY6
+            If intX6 > -1 And intY6 > -1 Then 
+                Do
+                    If isBuyLanFlag = True Then 
+                        Exit Do
+                    End If
+            	// 寻找是否正确的模式
+                    Dim intX7,intY7
+                    FindPic 554, 263, 715, 1002, "Attachment:药水模式改变按钮.png", "000000", 0, 0.7, intX7, intY7
+                    TracePrint intX7,intY7
+                    If intX7 > -1 And intY7 > -1 Then
+                        Do
+                            If isBuyLanFlag = True Then 
+                                Exit Do
+                            End If
+                    // 寻找购买图标
+                            Dim intX8,intY8
+                            FindPic 36, 340, 616, 945, "Attachment:购买药图标.png", "000000", 0, 0.9, intX8, intY8
+                            If intX8 > -1 And intY8 > -1 Then
+                                Tap intX8, intY8
+                                Do
+                                    If isBuyLanFlag = True Then 
+                                        Exit Do
+                                    End If
+                            	  // 进入到商店界面
+                                    If CmpColorEx("645|90|665041,679|194|FFFFFF,646|476|665041,565|362|307FF2,197|178|F2F2F2,535|213|FFFFFF",0.9) = 1 Then
+                                        Do
+                            	         // 点击四级蓝瓶
+                                            Dim intX9,intY9
+                                            FindPic 12,169,565,1275,"Attachment:4级蓝瓶.png","000000",0,0.9,intX9,intY9
+                                            If intX9 > -1 And intY9 > -1 Then
+                                                Tap intX9, intY9
+                                                Delay 1000
+                                            End If
+                                          // 如果已经打开药瓶购买弹窗
+                                            If CmpColorEx("704|381|1E1813,675|751|E1DEDC,614|1098|665041", 0.9) = 1 Then 
+                                             // 选择购买数量
+                                                Tap 58, 862
+                                                Delay 500
+                                	         // 选择购买500瓶
+                                                Tap 166, 786
+                                                Delay 500
+                                	            // 点击购买
+                                                Tap 68,1108
+                                            End If
+                                // 弹出确认购买二次确认弹窗
+                                            If CmpColorEx("651|147|1E1813,653|593|1E1813,595|1124|1E1813,570|937|665041,554|374|665041,164|366|B0874C,170|911|4670EE",0.9) = 1 Then
+                                                Tap 200, 751
+                                                isBuyLanFlag = True
+                                                Exit Do
+                                            End If
+                                        Loop
+                                    End If
+                                Loop
+                            End If
+                      
+                            Exit Do
+                        Loop
+                    Else 
+				// 若模式不对,则点击切换
+                        Tap 594, 862
+                        Delay 2000
+                    End If
+                    Exit Do
+                Loop
+            End If
+        Loop
+        Delay 500
+        // 去装刚才购买的4级药水
+        backToGameIndex 
+        Touch 525,1226, 2000
+        Delay 1000
+        Do
+            Dim intX10,intY10
+            FindPic 554, 263, 715, 1002, "Attachment:添加药水.png", "000000", 0, 0.9, intX10, intY10
+            If intX10 > -1 And intY10 > -1 Then
+                Dim intX11,intY11
+                FindPic 30, 336, 703, 943, "Attachment:4级蓝瓶1.png", "000000", 0, 0.9, intX11, intY11
+                // 如果没装备的话
+                If intX11 > -1 And intY11 > -1 Then
+                    Tap intX11, intY11
+                    Exit Do
+                End If
+                 // 正在装备时
+                Dim intX13,intY13
+                FindPic 43,345,572,886,"Attachment:4级蓝瓶2.png","000000",0,0.9,intX13,intY13
+                If intX13 > -1 And intY13 > -1 Then
+                    Exit Do
+                End If
+            End If	
+        Loop
+    End If
+		// 都设置完过后,缩小道具栏
+    backToGameIndex 
+    Delay 500
+	// 如果没找到判断是否存在被打开的道具更多按钮
+    Dim intX14,intY14
+    FindPic 330, 954, 404, 1270, "Attachment:道具更多按钮被点击.png", "303030", 0, 0.9, intX14, intY14
+    If intX14 > -1 And intY14 > -1 Then 
+        Tap intX14,intY14
+    End If
+	
+End Function
+
+//倒装备
+Function getEquipment
+    Do
+		// 外界面(没货一直点击刷新)
+        If CmpColorEx("596|60|46362B-404040,593|270|4675EE-404040,456|519|5F5144-404040,464|920|C3C3C3-404040,372|663|E2E2E2",0.9) = 1 Then
+            RandomTap 466, 1032, 8
+        End If
+        // 外界面(有货点击商品)
+        If CmpColorEx("596|60|46362B-404040,593|270|4675EE-404040,456|519|5F5144-404040,464|920|C3C3C3-404040,372|663|FFFFFF", 0.9) = 1 Then 
+            TracePrint "有货"
+            tap 382,778
+        End If
+        // 已经进入商品详情页
+        If CmpColorEx("47|1060|4670EE-202020,90|1063|4670EE-202020,48|1116|4670EE-202020,86|1117|4670EE-202020,590|92|F9F8F6-202020,532|152|E8E6E5-202020",0.9) = 1 Then
+            tap 70,1129
+        End If
+        // 已经打开确认购买弹窗
+        Dim intX,intY
+        FindColor 17, 579, 413, 949, "4670EE", 2, 1, intX, intY
+        If intX > -1 And intY > -1 Then
+            Tap intX,intY
+        End If
+       // 已购买成功弹窗
+        If CmpColorEx("194|560|4670EE-404040,205|760|4670EE-404040,190|454|F2F2F2-404040,209|847|F2F2F2-404040",0.9) = 1 Then
+            Exit Do        
+        End If
+    Loop
+End Function
+
+
+// 背包管理空间
+Function managementBackPack()
+    fenJieBackpack 
+    piLiangBackpack 
+    organizeBackPack
+End Function
+
+//简单单人狮子
+Function shiziBoss
+    openDayPlay 
+    Do
+          
+        Dim intX,intY
+        FindPic 14,11,557,1273, "Attachment:军团.png", "000000", 0, 0.9, intX, intY
+        If intX > -1 And intY > -1 Then
+            Tap intX, intY
+            Do
+            	// 判断是否进入军团boss选择界面
+                If CmpColorEx("649|65|544134-505050,612|1256|FFFFFF,337|1159|957A61,291|1160|957A61",0.9) = 1 Then
+                 		// 点击狮子
+                    Tap 566,60
+                    Delay 500
+                        // 点击普通模式
+                    Tap 371, 79
+                    Delay 500
+                  // 如果还有入场次数
+                    If CmpColorEx("64|1069|4670EE,73|1213|4670EE",0.9) = 1 Then
+                  // 点击入场
+                        Tap 70, 1103
+                        Do
+    					// 判断是否死亡复活界面(拥有复活次数)
+                            If CmpColorEx("511|591|FFFFFF,321|457|FFFFFF,315|484|36D8CD,302|485|CC5500", 0.9) = 1 Then 
+    	   					 // 点击复活
+                                Tap 213, 605
+                                // 判断是否死亡复活界面(没复活次数)
+                            ElseIf CmpColorEx("525|696|3B3B3B,537|596|323232,329|413|B0874C,331|620|B0874C,330|657|B0874C,332|866|B0874C", 0.9) = 1 Then
+                             	// 点击离开
+                                KeyPress("back")
+                                Delay 2000
+                                checkLoading
+                                Exit Function
+        					// 判断是否结束战斗
+                            ElseIf CmpColorEx("533|349|35CBE9-808080,154|572|B0874C,162|731|B0874C",0.9) = 1 Then
+                                Tap 163, 573
+                                Delay 1000
+                                // 点击离开
+                                Do
+                                // 判断是否弹出离开弹窗
+                                    If CmpColorEx("576|347|665041,576|935|665041,167|478|B0874C,177|575|B0874C,189|785|4670EE", 0.9) = 1 Then 
+                                		// 点击离开
+                                        Tap 194, 789
+                                        Delay 2000
+                                        checkLoading 
+                                        Exit Function
+                                    Else 
+                                	 // 没弹出的话,就点击返回
+                                        KeyPress ("back")
+                                        Delay 1000
+                                    End If
+                                Loop
+                                Exit Function
+                            Else 
+    							// 如果为反伤状态,则不攻击
+                                Dim intX1,intY1
+                                FindPic 605, 477, 642, 831, "Attachment:反伤.png", "000000", 0, 0.9, intX1, intY1
+                                If intX1 > -1 And intY1 > -1 Then
+                                    Delay 1000     
+                                Else 
+        						// 攻击前先判断是否提示出反伤提示
+                                    Dim tipX,tipY
+                                    FindPic 356, 302, 527, 446, "Attachment:狮子反伤提示.png", "303030", 0, 0.8, tipX, tipY
+                                    If tipX = -1 And tipY = -1 Then
+	         					// 如果没反伤提示,点击主攻击按键
+                                        RandomsTap 64, 1091, 5
+                                        Delay 200
+                                    End If
+                                End If
+                            End If
+                        Loop	
+                    Else 
+                        Exit Function
+                    End If
+                    
+                End If
+               
+            Loop
+        Else 
+            // 如果没找到,则翻页
+            //TouchDown(340,1207)
+            //TouchMove 340,600, 0, 500
+            //TouchUp (0)
+            Swipe 340,1207,340,600,500
+            
+            Delay 1000
+        End If
+    Loop
+End Function
+
+
+
+// 赠送人气
+Function toGift(giftIdArray,speedRatio)
+    toMoreMenu 
+    Delay 500/speedRatio
+    // 打开社交
+    Do
+        Dim intX,intY
+        FindPic 79,796,656,1267,"Attachment:社交.png","303030",0,0.8,intX,intY
+        If intX > -1 And intY > -1 Then
+            Tap intX, intY
+            Exit Do
+        Else 
+             //滑动
+            //TouchDown(125,1077)
+            //TouchMove 655,996, 0, 500
+            //TouchUp (0)
+            Swipe 125,1077,655,996,500
+            Delay 2000
+        End If
+    Loop
+    	// 遍历勾选的人气id集合
+    For Each idName In giftIdArray
+        Dim openUserCard = false
+        Do Until openUserCard = True
+   			 // 如果已经进入社交弹窗
+            If CmpColorEx("534|195|00B7F3,607|863|287914", 0.9) = 1 Then 
+                Tap 601, 83
+                Delay 500/speedRatio
+            End If
+    		// 如果已经出现输入搜索ID弹窗
+            If CmpColorEx("576|349|665041,574|937|665041,164|374|B0874C,165|914|4670EE", 0.9) = 1 Then 
+                Tap 318, 637
+                Delay 500
+                InputText idName
+                KeyPress ("back")
+                Delay 300
+    	   // 点击确定 
+                Tap 200, 755
+                Dim currentTime = 0
+                Do
+                   // 如果超时(一般是用户没开启角色查看权限)
+                    If currentTime > 3000 Then 
+                        Goto finshGiftRem
+                    End If
+             // 如果已经打开指定角色卡片界面
+                    If CmpColorEx("705|10|665041,592|636|4675EE,553|559|573CBC,24|81|00A0EA", 0.9) = 1 Then 
+                        openUserCard = True
+                        Exit Do
+                    Else 
+                        currentTime = currentTime + 1000
+                        Delay 1000
+                    End If
+                Loop
+            End If
+        Loop
+        Dim finishGift = False
+        Do Until finishGift
+    	// 如果可以捐人气
+            If CmpColorEx("21|28|507BFF,37|39|FFFFFF", 0.9) = 1 Then 
+                Tap 38,35
+            End If
+    	// 进入确认赠送人气弹窗(未选择)
+            If CmpColorEx("608|334|665041,610|942|665041,369|503|5551FC,402|397|DFDFDF",0.9) = 1 Then
+                Tap 396, 409
+                Delay 500/speedRatio
+               // 如果已经捐赠,则返回到社交界面
+                If CmpColorEx("400|395|DFDFDF,173|569|C3C3C3,165|747|C3C3C3", 0.9) = 1 Then 
+                    Do	
+                        If CmpColorEx("534|195|00B7F3,607|863|287914", 0.9) = 1 Then 
+                            TracePrint "已经抵达社交页"
+                            finishGift = True
+                            Exit Do
+                        Else 
+                            TracePrint "还没抵达社交页,再次点击返回按键"
+                            KeyPress ("back")
+                            Delay 500
+                        End If
+                    Loop
+                End If
+         // 进入确认赠送人气弹窗(已选择)
+            ElseIf CmpColorEx("608|334|665041,610|942|665041,369|503|5551FC,403|397|A2783B", 0.9) = 1 Then
+                Tap 187, 610
+                Delay 1000/speedRatio
+                Do	
+                    If CmpColorEx("534|195|00B7F3,607|863|287914", 0.9) = 1 Then 
+                        TracePrint "已经抵达社交页"
+                        finishGift = True
+                        Exit Do
+                    Else 
+                        TracePrint "还没抵达社交页,再次点击返回按键"
+                        KeyPress ("back")
+                        Delay 500
+                    End If
+                Loop
+            End If
+        Loop
+        Rem finshGiftRem
+    Next
+   
+	
+End Function
+
+
+// 快速跳过任务
+Function quickTaskClick()
+    Do
+	// 出现视频是否跳过
+        If CmpColorEx("687|182|000000,663|1034|000000,571|343|665041,578|939|665041,164|380|B0874C,168|728|4670EE", 0.9) = 1 Then 
+            Tap 196,486
+        End If
+    // 出现完成按钮
+        If CmpColorEx("291|1028|4670EE,307|1188|4670EE", 0.9) = 1 Then 
+            Tap 304,1071
+        End If
+	// 出现快进按钮
+        If CmpColorEx("226|1205|F0F8FF,233|1210|F0F8FF,240|1205|F0F8FF,226|1217|F0F8FF,233|1222|F0F8FF,239|1216|F0F8FF", 0.9) = 1 Then 
+            Tap 231,1206
+        End If
+        // 出现对话需要单击
+        If CmpColorEx("206|726|1A1A1B,213|872|1A1A1B,27|1010|000000,23|1093|000000", 0.9) = 1 Then 
+            Tap 72,890
+        End If
+	// 出现下一章确认
+        If CmpColorEx("563|514|1A98CD,563|763|1A9AD0,212|436|B0874C,213|600|B0874C,210|694|4670EE,215|858|4670EE",0.9) = 1 Then
+            Tap 242,723
+        End If
+    Loop
+End Function
+
+
+
+
