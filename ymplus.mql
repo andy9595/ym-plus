@@ -399,8 +399,8 @@ Function openDayPlay()
     Loop
 End Function
 
-//领取所有奖励(周日常+日日常+领主奖励)
-Function getAllReward(mainManType,manNumber)
+//领取所有奖励(周日常+日日常+领主奖励+公会任务奖励)
+Function getAllReward(mainManType,manNumber,speedRatio)
     openDailyTasks 
     Tap 584, 43
     // 判断已经显示了界面才开始走下一步
@@ -416,7 +416,7 @@ Function getAllReward(mainManType,manNumber)
         Delay 1000
         testTime = testTime+ 1000
     Loop
-    Dim dayFinish,weekFinish,juntuanFinish
+    Dim dayFinish,weekFinish
     // 领取日日常
     Do Until dayFinish
         Dim currentTime = 0
@@ -563,7 +563,17 @@ Function getAllReward(mainManType,manNumber)
         End If
     Loop
     
-    // 设置可以领取军团奖励
+    Delay 500
+    getGongHuiReward(speedRatio)
+    
+   	
+    
+End Function
+
+// 领取军团长奖励
+Function getJunTuanReward(mainManType, manNumber)
+    Dim juntuanFinish
+	 // 设置可以领取军团奖励
     Dim juntuanFlag = ReadUIConfig("领取军团长任务奖励")
     If juntuanFlag = True Then 
    		//领取军团长奖励
@@ -595,7 +605,7 @@ Function getAllReward(mainManType,manNumber)
                 End If
             End If
         Loop
-        Delay 1000
+        Delay 1000 
         Do Until juntuanFinish
             Dim currentTime2 = 0
            // 点击全部领取
@@ -623,11 +633,81 @@ Function getAllReward(mainManType,manNumber)
             End If
         Loop
     End If
-    
-   	
-    
 End Function
 
+//领取公会任务奖励
+Function getGongHuiReward(speedRatio)
+    toMoreMenu 
+    Delay 1000/speedRatio
+	// 找公会打开
+    Do
+        Dim intX,intY
+        FindPic 26,782,715,1273,"Attachment:公会.png","000000",0,0.9,intX,intY
+        If intX > -1 And intY > -1 Then
+            Tap intX, intY
+            Exit Do
+        Else 
+            Swipe 125,1077,655,996,500
+            Delay 2000
+        End If
+    Loop
+    Delay 1500/speedRatio
+    // 公会界面已经打开
+    Do
+        If CmpColorEx("685|35|FFFFFF,665|112|FFFFFF,668|137|665041,679|1241|FFFFFF", 0.9) = 1 Then 
+            Delay 1000/speedRatio
+            Exit Do
+        End If
+    Loop
+    // 是否可以领取
+    Do
+        If CmpColorEx("254|135|1031FC", 0.9) = 1 Then 
+    	  // 有可以领取的小红点,则点击公会任务tab
+            Tap 232, 83
+            Exit Do
+        Else 
+            Exit Function
+        End If
+    Loop
+    // 是否打开公会任务tab
+    Do
+        If CmpColorEx("258|16|4675EE,568|196|307FF2,569|212|307FF2",0.9) = 1 Then
+            Delay 1000/speedRatio
+            Exit Do
+        End If
+    Loop
+    // 公会每日任务
+    Do
+        If CmpColorEx("568|188|307FF2,567|196|307FF2,567|206|307FF2", 0.9) = 1 Then 
+         	// 可以领取
+            If CmpColorEx("44|1091|4670EE,45|1229|4670EE", 0.9) = 1 Then 
+                Tap 42, 1112
+                Delay 1000/speedRatio
+                Exit Do
+            Else 
+                Delay 1000/speedRatio
+                Exit Do
+            End If
+        End If
+    Loop
+    // 每周任务是否可以领取
+    Do 
+        If CmpColorEx("621|581|1031FC", 0.9) = 1 Then 
+            Tap 599, 492
+            Delay 800 / speedRatio
+            Exit Do
+        Else 
+            Exit Function
+        End If
+    Loop
+    Do
+        If CmpColorEx("568|396|307FF2,568|402|307FF2,568|412|307FF2", 0.9) = 1 Then 
+            Tap 41, 1105
+            Exit Do
+        End If
+    Loop
+    
+End Function
 
 // 领取个人邮件
 Function getEmail()
@@ -1761,7 +1841,9 @@ Function shareTask(speedRatio)
         If intX1 > -1 And intY1 > -1 Then
             Tap intX1, intY1
             Delay 500
-            Exit Do
+            If CmpColorEx("600|947|60544A,600|961|F2F2F2,593|801|F2F2F2,596|345|F2F2F2", 0.9) = 1 Then 
+              Exit Do
+            End If
         End If
     Loop
     Dim testCount = 0
@@ -4020,7 +4102,7 @@ Function dailyBadgeTask
                     Exit Function
                 End If
                 Dim intX,intY
-                FindStr(348,842,384,1260,"每日","5D9ACC-505050",0.9,intX,intY)
+                FindStr(348,842,384,1260,"每日","5D9ACC-505050",0.7,intX,intY)
                 If intX > -1 And intY > -1 Then 
                     Delay 300
                     Tap 61, 1126
@@ -4036,7 +4118,13 @@ Function dailyBadgeTask
             Dim intX1,intY1
             Dim intX2,intY2
             Dim intX3,intY3
-            Do 
+            Dim intX4,intY4
+            Do
+            	// 如果出现跳过接受任务界面
+                If CmpColorEx("685|1250|FFFFFF,683|1243|FFFFFF,283|990|4670EE,286|1204|4670EE,688|1193|FFFFFF", 0.9) = 1 Then 
+                    Tap 678, 1170
+                    Delay 2000
+                End If
                 FindPic 46, 141, 671, 1080, "Attachment:徽章连续进行.png", "000000", 0, 0.9, intX1, intY1
                 FindPic 46,141,671,1080,"Attachment:徽章任务立即完成.png","000000",0,0.9,intX3,intY3
                 If intX1 > -1 And intY1 > -1 Then 
